@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>畫聲調升空｜試玩</title>
+<link rel="stylesheet" href="fw_common.css">
+<style>
+  .spacer { flex: 1; }
+  .padwrap { position: relative; }
+  #pad { display: block; width: min(280px, 80vw); height: 220px; border-radius: 16px; background: rgba(20,28,64,.85); border: 1px solid var(--tile-line); touch-action: none; cursor: crosshair; }
+  .padlabel { position: absolute; left: 8px; top: 6px; font-size: 12px; color: var(--muted); pointer-events: none; }
+  .ch .sd { font-size: 11px; color: #ff9db0; margin-top: 2px; }
+  .tip { white-space: pre-line; margin-top: 4px; min-height: 1.3em; font-size: 15px; color: var(--gold); max-width: 560px; text-align: center; }
+  .hint { margin-top: 8px; font-size: 13px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<div class="ui" id="ui" hidden>
+  <div class="hud"><span>第 <b id="wno">1</b> / <b id="wn">3</b> 詞</span><span class="grow"></span><span>得分 <b id="sc">0.00</b></span></div>
+  <div class="word" id="word"></div>
+  <div class="meaning" id="meaning"></div>
+  <button class="btn ghost" id="listen" style="margin-top:10px">🔊 聽讀音</button>
+  <div class="msg" id="msg"></div>
+  <div class="tip" id="tip"></div>
+  <div class="spacer"></div>
+  <div class="padwrap">
+    <canvas id="pad"></canvas>
+    <div class="padlabel">高 5 ─ 低 1　由左往右畫</div>
+  </div>
+  <div class="hint">照發光那個字的聲調，在框裡由左往右畫一筆：煙火會沿著你畫的線飛上天</div>
+</div>
+
+<div class="panel" id="startPanel">
+  <div class="card">
+    <h1>畫聲調升空</h1>
+    <p>每個音節都要「畫出它的聲調」才能發射：照五度調值（1 最低、5 最高）由左往右畫，例如四縣腔 ˊ 是 24、ˋ 是 31。<br>畫得越準，煙火越大越亮。共 3 個詞。</p>
+    <div class="chips" id="dialects"></div>
+    <button class="btn" id="startBtn">開始</button>
+    <div class="note">拼音依《中小學沉浸式客語課室用語手冊》，只標本調、不標變調；調值依教育部《客家語拼音方案使用手冊》聲調符號表（五度標記，1 最低、5 最高）。給分照課本本調；變調只做註記，規則依教育部《客家語拼音學習手冊》各腔「變調」課</div>
+  </div>
+</div>
+<div class="panel" id="endPanel" hidden>
+  <div class="card">
+    <h1>升空完成</h1>
+    <div class="big" id="endScore">0.00</div><p style="margin:0">／ 20 分</p>
+    <div class="rows" id="endRows"></div>
+    <button class="btn" id="againBtn">再玩一次</button>
+  </div>
+</div>
+<audio id="voice"></audio>
+<script src="fireworks_data.js"></script>
+<script src="fw_sfx.js"></script>
+<script src="fw_engine.js"></script>
+<script>
+FW.init(document.getElementById("sky"));
+const $ = id => document.getElementById(id);
+const st = { dialect: new URLSearchParams(location.search).get("dialect") || "四縣腔", words: [], wi: 0, si: 0, scores: [], log: [], busy: false };
+
+// ---- 調值（五度標記，1 低～5 高）：教育部《客家語拼音方案使用手冊》101 年版「聲調符號表」----
+// 舒聲（一般音節）與入聲（-b、-d、-g 結尾）分開查；題庫的 ⁺ 即手冊的 +，ˆ 即 ^
+const TONES = {
+  "四縣腔":   { open: { "ˊ": "24", "ˇ": "11", "ˋ": "31", "": "55" },                       stop: { "ˋ": "2", "": "5" } },
+  "海陸腔":   { open: { "ˋ": "53", "": "55", "ˊ": "24", "ˇ": "11", "⁺": "33" },            stop: { "": "5", "ˋ": "2" } },
+  "大埔腔":   { open: { "⁺": "33", "ˊ": "35", "ˇ": "113", "ˆ": "31", "ˋ": "53", "": "55" }, stop: { "ˆ": "21", "ˋ": "54" } },   // 無標 55：去聲變調後才出現
+  "饒平腔":   { open: { "ˇ": "11", "": "55", "ˋ": "53", "ˊ": "24", "ˆ": "31", "⁺": "33" }, stop: { "ˋ": "2", "": "5", "ˊ": "24" } },   // ˆ31、超陰入 ˊ24：手冊特殊聲調 (3)
+  "詔安腔":   { open: { "ˇ": "11", "ˋ": "53", "ˆ": "31", "": "55", "ˊ": "24", "⁺": "33" }, stop: { "ˊ": "24", "ˋ": "43", "": "5" } },           // 舒聲 ˊ24：g 韻尾消失的陰入字，手冊特殊聲調 (5)
+  "南四縣腔": { open: { "ˊ": "24", "⁺": "33", "ˇ": "11", "ˋ": "31", "": "55" },            stop: { "ˋ": "2", "": "5" } },
+};
+const TONE_MARK = /[ˊˇˋ⁺ˆ]$/;
+// 入聲 = -b、-d、-g 結尾；-ng 是鼻音韻尾，不是入聲
+const STOP = /(?:[bd]|[^n]g)$/;
+const markOf = syl => (syl.match(TONE_MARK) || [""])[0];
+const baseOf = syl => syl.replace(TONE_MARK, "");
+/** 聲調類別：標號，入聲再加「入」。例如 "conˊ" -> "ˊ"、"bagˋ" -> "ˋ入"、"pag" -> "入" */
+const toneKey = syl => markOf(syl) + (STOP.test(baseOf(syl)) ? "入" : "");
+function valueOf(base, m) {
+  const t = TONES[st.dialect];
+  return (STOP.test(base) ? t.stop[m] : t.open[m]) ?? t.open[m] ?? "33";
+}
+/** 本調調值 */
+const toneValue = syl => valueOf(baseOf(syl), markOf(syl));
+
+// ---- 連讀變調：依教育部《客家語拼音學習手冊》各腔「變調」課的例詞整理 ----
+// SANDHI[腔](這個字的類別, 後一字的類別) -> 變調後的標號；null 表示不變。詞的最後一個字不變調。
+const SX = (c, n) => c === "ˊ" && ["ˊ", "", "入"].includes(n) ? "ˇ" : null;   // 陰平 24 接陰平、去聲、陽入 -> 11
+const SANDHI = {
+  "四縣腔": SX,
+  "南四縣腔": SX,
+  // 上聲 24 接任何調 -> 33；陰入 5 接任何調 -> 2
+  "海陸腔": (c, n) => c === "ˊ" ? "⁺" : c === "入" ? "ˋ" : null,
+  // 陰平 33 接陽平、上聲 -> 35；陽平 113 接陽平 -> 33；去聲 53 接上聲、去聲、陰入、陽入 -> 55
+  "大埔腔": (c, n) => c === "⁺" && ["ˇ", "ˆ"].includes(n) ? "ˊ"
+                    : c === "ˇ" && n === "ˇ" ? "⁺"
+                    : c === "ˋ" && ["ˆ", "ˋ", "ˆ入", "ˋ入"].includes(n) ? "" : null,
+  // 陰平 11、去聲 24 接任何調 -> 33；陽平 55 接陰平、上聲、陰入 -> 53，其他 -> 33；
+  // 上聲 53 接陰平、上聲 -> 33，其他 -> 11；陰入 2 接任何調 -> 5
+  "饒平腔": (c, n) => c === "ˇ" || c === "ˊ" ? "⁺"
+                    : c === "" ? (["ˇ", "ˋ", "ˋ入"].includes(n) ? "ˋ" : "⁺")
+                    : c === "ˋ" ? (["ˇ", "ˋ"].includes(n) ? "⁺" : "ˇ")
+                    : c === "ˋ入" ? "" : null,
+  // 上聲 31 接上聲 -> 55，其他 -> 11；ˊ 24（含陰入）接任何調 -> 55／5；陽平 53、去聲 55 接任何調 -> 33
+  "詔安腔": (c, n) => c === "ˆ" ? (n === "ˆ" ? "" : "ˇ")
+                    : c === "ˊ" || c === "ˊ入" ? ""
+                    : c === "ˋ" || c === "" ? "⁺" : null,
+};
+/** 這個詞第 i 個字實際要唸的調：{ base: 本調, val: 實際調值, changed } */
+function spoken(w, i) {
+  const syl = w.p[i], base = toneValue(syl);
+  if (i === w.p.length - 1) return { base, val: base, changed: false };
+  const m = SANDHI[st.dialect](toneKey(syl), toneKey(w.p[i + 1]));
+  if (m === null || m === undefined) return { base, val: base, changed: false };
+  const val = valueOf(baseOf(syl), m);
+  return { base, val, changed: val !== base };
+}
+/** 調值字串 -> 音高點，例如 "24" -> [2,4]、"113" -> [1,1,3]、單一數字 "5" -> [5,5] */
+function contourOf(v) {
+  const pts = [...v].map(Number);
+  return pts.length === 1 ? [pts[0], pts[0]] : pts;
+}
+/** 依 0~1 的位置取目標音高（多點時分段直線） */
+const targetAt = (c, u) => { const k = Math.min(c.length - 2, Math.floor(u * (c.length - 1))), f = u * (c.length - 1) - k; return c[k] + (c[k + 1] - c[k]) * f; };
+const toneName = c => { const a = c[0], b = c.at(-1); return a === b ? (a >= 4 ? "高平" : a <= 2 ? "低平" : "中平") : b > a ? "上升" : "下降"; };
+
+// ---- 畫板 ----
+const pad = $("pad"), pc = pad.getContext("2d");
+let PW = 0, PH = 0, stroke = [], drawing = false, showTarget = null;
+function sizePad() { const r = pad.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); PW = r.width; PH = r.height; pad.width = PW * d; pad.height = PH * d; pc.setTransform(d, 0, 0, d, 0, 0); drawPad(); }
+addEventListener("resize", sizePad);
+const yOf = lvl => PH - 18 - (lvl - 1) / 4 * (PH - 36);   // 音高 1~5 -> 畫板 y
+const lvlOf = y => 1 + (PH - 18 - y) / (PH - 36) * 4;
+function drawPad() {
+  pc.clearRect(0, 0, PW, PH);
+  for (let l = 1; l <= 5; l++) { pc.strokeStyle = "rgba(170,179,214,.18)"; pc.lineWidth = 1; pc.beginPath(); pc.moveTo(28, yOf(l)); pc.lineTo(PW - 10, yOf(l)); pc.stroke(); pc.fillStyle = "rgba(170,179,214,.6)"; pc.font = "11px sans-serif"; pc.fillText(l, 12, yOf(l) + 4); }
+  if (showTarget) { pc.strokeStyle = "rgba(111,227,161,.85)"; pc.lineWidth = 5; pc.setLineDash([8, 6]); pc.beginPath(); showTarget.forEach((lv, k) => { const x = 40 + (PW - 64) * k / (showTarget.length - 1); k ? pc.lineTo(x, yOf(lv)) : pc.moveTo(x, yOf(lv)); }); pc.stroke(); pc.setLineDash([]); }
+  if (stroke.length) { pc.strokeStyle = "#ffd36b"; pc.lineWidth = 4; pc.lineCap = "round"; pc.beginPath(); stroke.forEach(([x, y], i) => i ? pc.lineTo(x, y) : pc.moveTo(x, y)); pc.stroke(); }
+}
+const local = e => { const r = pad.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+pad.addEventListener("pointerdown", e => { if (st.busy) return; pad.setPointerCapture(e.pointerId); drawing = true; showTarget = null; stroke = [local(e)]; SFX.hum.start(lvlOf(stroke[0][1])); drawPad(); });
+pad.addEventListener("pointermove", e => { if (!drawing) return; stroke.push(local(e)); SFX.hum.set(lvlOf(stroke.at(-1)[1])); drawPad(); });
+pad.addEventListener("pointerup", e => { if (!drawing) return; drawing = false; SFX.hum.stop(); release(); });
+pad.addEventListener("pointercancel", () => { drawing = false; SFX.hum.stop(); });
+
+// ---- 常見錯誤提示（只在分數不到 70 時出現）----
+function advise(g, target, syl, val, sp) {
+  if (g.why || g.s >= .7) return "";
+  // 照錄音畫成變調：提醒要照課本本調
+  if (sp && sp.changed && grade(stroke, contourOf(sp.val)).s >= .7) return `你畫的是聽到的變調 ${sp.val}；這裡要照課本拼音的本調 ${sp.base} 畫。`;
+  const got = g.got, n = got.length, a = got[0], b = got[n - 1];
+  const lo = Math.min(...got), mid = got.indexOf(lo);
+  const flatT = target[0] === target.at(-1) && target.every(x => x === target[0]);
+  const dirT = Math.sign(target.at(-1) - target[0]), slope = b - a;
+  const dip = mid > 1 && mid < n - 2 && a - lo > 1 && b - lo > 1;   // 先降再升的 V 字
+  const name = toneName(target);
+  if (dip && markOf(syl) === "ˇ" && val === "11") return "客語的 ˇ 不是華語第三聲！這裡的 ˇ 是低平 11，畫一條低低的平線就好。";
+  if (dip && flatT) return `這個字是${name}，不用先降再升，畫一條平線就好。`;
+  if (dip) return `不用先降再升：${val} 是一路${dirT > 0 ? "往上" : "往下"}。`;
+  if (dirT !== 0 && Math.sign(slope) === -dirT && Math.abs(slope) >= .6) return `方向反了：${val} 是由${dirT > 0 ? "低往高" : "高往低"}。`;
+  if (dirT !== 0 && Math.abs(slope) < .6) return `要畫出${dirT > 0 ? "上升" : "下降"}：從 ${target[0]} 畫到 ${target.at(-1)}。`;
+  if (flatT && Math.abs(slope) >= 1) return `這個字是${name}，不用升降，畫平的就好。`;
+  const avgG = got.reduce((x, y) => x + y, 0) / n, avgT = target.reduce((x, y) => x + y, 0) / target.length;
+  if (Math.abs(avgG - avgT) > 1) return `形狀對了，但${avgG > avgT ? "太高" : "太低"}了：這個字在 ${Math.min(...target)}～${Math.max(...target)} 之間。`;
+  return "";
+}
+
+// ---- 評分：把筆跡依 x 重新取 11 點，和目標調型比平均誤差；方向畫反再打折 ----
+function grade(pts, target) {
+  const xs = pts.map(p => p[0]), x0 = Math.min(...xs), x1 = Math.max(...xs);
+  if (x1 - x0 < PW * .25 || pts[pts.length - 1][0] < pts[0][0]) return { s: 0, why: "要由左往右畫長一點" };
+  const sorted = pts.slice().sort((a, b) => a[0] - b[0]);
+  const at = x => { let k = sorted.findIndex(p => p[0] >= x); if (k <= 0) return lvlOf(sorted[Math.max(0, k)][1]); const [ax, ay] = sorted[k - 1], [bx, by] = sorted[k]; return lvlOf(ay + (by - ay) * ((x - ax) / ((bx - ax) || 1))); };
+  let err = 0; const N = 11, got = [];
+  for (let i = 0; i < N; i++) { const u = i / (N - 1), v = at(x0 + u * (x1 - x0)), t = targetAt(target, u); got.push(v); err += Math.abs(v - t); }
+  err /= N;
+  let s = Math.max(0, 1 - err / 2.2);
+  const dirT = Math.sign(target.at(-1) - target[0]), slope = got[N - 1] - got[0], dirG = Math.abs(slope) < .6 ? 0 : Math.sign(slope);
+  if (dirT !== dirG) s *= .5;
+  return { s, err, got };
+}
+
+function release() {
+  const w = st.words[st.wi], syl = w.p[st.si], sp = spoken(w, st.si), target = contourOf(sp.base);   // 給分照課本本調
+  const g = grade(stroke, target);
+  st.busy = true;
+  // 飛行路線：先從畫板升空，再在發光的字下方「照你畫的聲調」飛一段，最後炸開
+  const chEl = $("word").children[st.si], cr = chEl.getBoundingClientRect(), pr = pad.getBoundingClientRect();
+  const B = Math.min(360, FW.W * .7), Hh = 120, cxs = cr.left + cr.width / 2, baseY = Math.max(cr.bottom + 30 + Hh, Math.min(cr.bottom + 60 + Hh, pr.top - 20));
+  const xs = stroke.map(p => p[0]), x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const sky = stroke.map(([x, y]) => [cxs + ((x - x0) / ((x1 - x0) || 1) - .5) * B, baseY - (lvlOf(y) - 1) / 4 * Hh]);
+  const start = [pr.left + stroke[0][0], pr.top + stroke[0][1]];
+  const flight = [start, ...sky];
+  const msg = $("msg");
+  // 煙火炸開時再給答對音：90 分以上完美、70 分以上很好、40 分以上普通，以下算失敗
+  if (g.s > 0) FW.flyPath(flight, { power: g.s, ring: g.s > .85, n: 90 }, () => g.s >= .4 ? SFX.ding(g.s >= .9 ? 2 : g.s >= .7 ? 1 : 0) : SFX.buzz());
+  else { FW.dud(start[0], start[1]); SFX.buzz(); }
+  msg.className = "msg " + (g.s >= .8 ? "good" : g.s >= .5 ? "mid" : "bad");
+  msg.textContent = g.why || `${syl}：調值 ${sp.base}（${toneName(target)}）　${Math.round(g.s * 100)} 分`;
+  // 變調只做註記：說明錄音為什麼聽起來不一樣
+  const note = sp.changed ? `註：「${w.h[st.si]}」後面接「${w.h[st.si + 1]}」會變調，唸起來是 ${sp.val}（${toneName(contourOf(sp.val))}），所以錄音聽起來不一樣。` : "";
+  $("tip").textContent = [advise(g, target, syl, sp.base, sp), note].filter(Boolean).join(String.fromCharCode(10));
+  st.scores.push(g.s); st.log.push([w.h[st.si], syl, g.s, sp.changed ? `${sp.base}（唸 ${sp.val}）` : sp.base]);
+  $("sc").textContent = (20 * st.scores.reduce((a, b) => a + b, 0) / totalSyl()).toFixed(2);
+  showTarget = target; drawPad();
+  chEl.classList.remove("now"); chEl.classList.add("done");
+  setTimeout(() => { st.busy = false; stroke = []; showTarget = null; next(); }, 1100);
+}
+
+function totalSyl() { return st.words.reduce((n, w) => n + w.p.length, 0); }
+function renderWord() {
+  const w = st.words[st.wi];
+  $("wno").textContent = st.wi + 1;
+  $("word").innerHTML = w.h.map((h, i) => `<div class="ch${i === st.si ? " now" : ""}"><div class="h">${h}</div><div class="p">${w.p[i]}</div>${spoken(w, i).changed ? `<div class="sd">變調</div>` : ""}</div>`).join("");
+  $("meaning").textContent = w.m;
+}
+function next() {
+  const w = st.words[st.wi];
+  st.si++;
+  if (st.si >= w.p.length) { st.wi++; st.si = 0; if (st.wi >= st.words.length) return finish(); renderWord(); say(); }
+  else { [...$("word").children].forEach((c, i) => c.classList.toggle("now", i === st.si)); }
+  $("msg").textContent = ""; $("tip").textContent = "";
+  drawPad();
+}
+const say = () => { const v = $("voice"); v.src = st.words[st.wi].s; v.play().catch(() => {}); };
+$("listen").onclick = say;
+
+function start() {
+  Object.assign(st, { words: FWU.pick(FW_WORDS[st.dialect], [2, 3, 3]), wi: 0, si: 0, scores: [], log: [], busy: false });
+  $("wn").textContent = st.words.length; $("sc").textContent = "0.00";
+  $("startPanel").hidden = $("endPanel").hidden = true; $("ui").hidden = false;
+  sizePad(); renderWord(); say();
+}
+function finish() {
+  const total = Math.round(2000 * st.scores.reduce((a, b) => a + b, 0) / st.scores.length) / 100;
+  for (let k = 0; k < 6; k++) setTimeout(() => FW.launch(FW.W * (.15 + .7 * Math.random()), FW.H * (.15 + .3 * Math.random()), { n: 110, ring: true }), k * 200);
+  setTimeout(() => {
+    $("ui").hidden = true; $("endPanel").hidden = false; SFX.fanfare();
+    $("endScore").textContent = total.toFixed(2);
+    $("endRows").innerHTML = st.log.map(([h, p, s, v]) => `<div><span>${h}　${p}　<small style="color:var(--muted)">${v}</small></span><b>${Math.round(s * 100)}</b></div>`).join("");
+    FWU.report({ type: "fireworks-complete", mode: "tone", score: total });
+  }, 1500);
+}
+const chips = (el, items, get, set) => { el.innerHTML = ""; for (const k of items) { const b = document.createElement("button"); b.className = "chip"; b.textContent = k; b.setAttribute("aria-pressed", k === get()); b.onclick = () => { set(k); [...el.children].forEach(c => c.setAttribute("aria-pressed", c === b)); }; el.appendChild(b); } };
+chips($("dialects"), Object.keys(FW_WORDS), () => st.dialect, v => st.dialect = v);
+FWX.mount({
+  title: "畫聲調升空 玩法",
+  steps: [
+    "聽讀音（可按 <b>🔊 聽讀音</b> 重聽），看<b>黃框</b>的字和拼音。",
+    "在下面的畫板<b>由左往右</b>畫一筆，畫出這個字聲調的高低變化。橫線 1～5 是音高，5 最高。",
+    "畫的時候會聽到一個音<b>跟著你的筆高低變化</b>，可以邊聽邊調整。",
+    "放開手指，煙火會照你畫的線飛上天。畫得越像，煙火越大。",
+  ],
+  tips: ["放開後出現的<b>綠色虛線</b>是標準調型，可以對照看看。", "課本拼音都標<b>本調</b>（字單獨唸的調），不標說話時的變調，所以一律照拼音的本調畫。字下面有粉紅色<b>「變調」</b>的，表示在這個詞裡唸起來會變，錄音聽起來會跟拼音不一樣，這是正常的。", "每個字滿分 100，最後換算成 20 分。"],
+});
+$("startBtn").onclick = FWX.firstHelp(start); $("againBtn").onclick = start;
+</script>
+</body>
+</html>

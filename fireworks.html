@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>煙火連線｜原型</title>
+<style>
+  :root {
+    --night: #0d1630; --night2: #1b2550; --ink: #f5f1e6; --muted: #aab3d6; --gold: #ffd36b;
+    --ok: #6fe3a1; --bad: #ff7b6b; --tile: #26346b; --tile-line: #3f4f92;
+    --font: "Microsoft JhengHei", "Noto Sans TC", "PingFang TC", "MingLiU-ExtB", "PMingLiU-ExtB", "SimSun-ExtB", sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--night); color: var(--ink); font-family: var(--font); overflow: hidden; touch-action: none; }
+  #sky { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+         background: radial-gradient(ellipse at 50% 120%, #3a2a5a 0, transparent 55%), linear-gradient(var(--night), var(--night2)); }
+  #links { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .ui { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding: 14px 16px 22px; pointer-events: none; }
+  .ui > * { pointer-events: auto; }
+  .hud { width: 100%; max-width: 760px; display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--muted); }
+  .hud b { color: var(--ink); }
+  .timer { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .timer i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #ff9e5e); transition: width .2s linear; }
+  .meaning { margin-top: 18px; font-size: 15px; color: var(--muted); min-height: 1.4em; }
+  .stars { margin-top: 10px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .star { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; font-size: 38px; font-weight: 700;
+          background: radial-gradient(circle, rgba(255,211,107,.18), rgba(255,211,107,.04) 70%); border: 2px dashed rgba(255,211,107,.55);
+          color: var(--ink); cursor: pointer; user-select: none; transition: transform .15s, border-color .2s, background .3s; }
+  .star.sel { transform: scale(1.08); border-style: solid; border-color: var(--gold); }
+  .star.lit { border: 2px solid var(--gold); background: radial-gradient(circle, rgba(255,211,107,.6), rgba(255,211,107,.1) 70%); cursor: default; }
+  .star .py { display: none; }
+  .star.lit { font-size: 30px; line-height: 1; }
+  .star.lit .py { display: block; font-size: 13px; color: var(--gold); margin-top: 4px; font-weight: 400; }
+  .star-in { display: flex; flex-direction: column; align-items: center; }
+  .listen { margin-top: 14px; border: 1px solid var(--tile-line); background: transparent; color: var(--ink); border-radius: 999px; padding: 6px 14px; font: inherit; cursor: pointer; }
+  .spacer { flex: 1; }
+  .tiles { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 760px; }
+  .tile { min-width: 84px; padding: 14px 16px; border-radius: 14px; background: var(--tile); border: 2px solid var(--tile-line);
+          color: var(--ink); font-size: 22px; text-align: center; cursor: pointer; user-select: none; transition: transform .15s, opacity .3s, border-color .2s; }
+  .tile.hot { border-color: var(--gold); transform: translateY(-3px); }
+  .tile.used { opacity: 0; pointer-events: none; transform: translateY(-20px) scale(.8); }
+  .tile.shake { animation: shake .35s; border-color: var(--bad); }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  .hint { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .panel { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(8,12,28,.72); padding: 16px; }
+  .card { width: min(440px, 100%); background: #18224a; border: 1px solid var(--tile-line); border-radius: 18px; padding: 24px; text-align: center; }
+  .card h1 { margin: 0 0 6px; font-size: 26px; }
+  .card p { color: var(--muted); margin: 6px 0 16px; line-height: 1.6; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 14px; }
+  .chip { border: 1px solid var(--tile-line); background: transparent; color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--gold); color: #1b1b1b; border-color: var(--gold); }
+  .btn { border: 0; background: var(--gold); color: #1b1b1b; font: inherit; font-weight: 700; font-size: 18px; padding: 12px 28px; border-radius: 12px; cursor: pointer; }
+  .big { font-size: 56px; font-weight: 800; color: var(--gold); margin: 4px 0; }
+  .rows { text-align: left; margin: 12px 0 18px; font-size: 15px; line-height: 1.9; }
+  .rows div { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--tile-line); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<svg id="links"></svg>
+
+<div class="ui" id="ui" hidden>
+  <div class="hud">
+    <span>第 <b id="wordNo">1</b> / <b id="wordN">5</b> 詞</span>
+    <div class="timer"><i id="timeBar" style="width:100%"></i></div>
+    <span><b id="timeLeft">60</b> 秒</span>
+    <span>🎆 <b id="fwCount">0</b></span>
+  </div>
+  <div class="meaning" id="meaning"></div>
+  <div class="stars" id="stars"></div>
+  <button class="listen" id="listen">🔊 再聽一次</button>
+  <div class="spacer"></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="hint">從夜空的客字拉一條引信到正確的拼音（也可以先點字、再點拼音）</div>
+</div>
+
+<!-- 開始 -->
+<div class="panel" id="startPanel">
+  <div class="card">
+    <h1>煙火連線</h1>
+    <p>聽客語、看客字，把每個字連到正確的拼音。<br>連對就放一朵煙火，60 秒內完成 5 個詞。</p>
+    <div class="chips" id="dialects"></div>
+    <div class="chips" id="levels"></div>
+    <button class="btn" id="startBtn">點火開始</button>
+  </div>
+</div>
+
+<!-- 結算 -->
+<div class="panel" id="endPanel" hidden>
+  <div class="card">
+    <h1 id="endTitle">煙火大會結束</h1>
+    <div class="big" id="endScore">0.00</div>
+    <p style="margin:0">／ 20 分</p>
+    <div class="rows" id="endRows"></div>
+    <button class="btn" id="againBtn">再放一次</button>
+  </div>
+</div>
+
+<audio id="voice" preload="auto"></audio>
+<script src="fireworks_data.js"></script>
+<script src="fw_sfx.js"></script>
+<script>
+// ===== 設定 =====
+const TIME = 60, WORDS = 5;
+const LEVELS = { easy: "一般", hard: "進階（多 2 個聲調陷阱）" };
+const q = new URLSearchParams(location.search);
+const EMBEDDED = q.has("embedded");
+const st = { dialect: q.get("dialect") || "四縣腔", level: q.get("level") || "easy",
+             words: [], wi: 0, correct: 0, wrong: 0, total: 0, t0: 0, left: TIME, timer: 0, running: false, fw: 0 };
+const $ = id => document.getElementById(id);
+const voice = $("voice");
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+// ===== 煙火（Canvas 2D 粒子）=====
+const cv = $("sky"), cx = cv.getContext("2d");
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * DPR; cv.height = H * DPR; cx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+addEventListener("resize", resize); resize();
+const parts = [], rockets = [];
+const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random() * .7, r: Math.random() * 1.3 + .3, p: Math.random() * 6 }));
+const PALETTE = ["#ffd36b", "#ff7b9c", "#7be0ff", "#b38bff", "#6fe3a1", "#ffa15e"];
+function burst(x, y, opts = {}) {
+  SFX.boom(opts.power ?? 1);
+  const n = opts.n || 70, col = opts.color || PALETTE[Math.floor(Math.random() * PALETTE.length)], sp = opts.speed || 3.2;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + Math.random() * .1, v = sp * (.6 + Math.random() * .5);
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, decay: .012 + Math.random() * .01, col, size: opts.size || 2.2 });
+  }
+  if (opts.ring) for (let i = 0; i < 36; i++) { const a = i / 36 * Math.PI * 2; parts.push({ x, y, vx: Math.cos(a) * sp * 1.4, vy: Math.sin(a) * sp * 1.4, life: 1, decay: .016, col: "#fff6d8", size: 1.6 }); }
+}
+function dud(x, y) { SFX.fizz(); for (let i = 0; i < 16; i++) parts.push({ x, y, vx: (Math.random() - .5) * 1.2, vy: -Math.random() * 1.2, life: 1, decay: .02, col: "#8a8fa6", size: 5, smoke: true }); }
+function launch(x, y, opts) { SFX.whoosh(null, .45); rockets.push({ x, y: H + 10, tx: x, ty: y, opts }); }
+function tick(t) {
+  cx.globalCompositeOperation = "source-over";
+  cx.clearRect(0, 0, W, H);
+  for (const s of stars) { cx.globalAlpha = .4 + .4 * Math.sin(t / 700 + s.p); cx.fillStyle = "#fff"; cx.beginPath(); cx.arc(s.x * W, s.y * H, s.r, 0, 7); cx.fill(); }
+  cx.globalAlpha = 1;
+  for (let i = rockets.length - 1; i >= 0; i--) {
+    const r = rockets[i]; r.y += (r.ty - r.y) * .14; r.x += (r.tx - r.x) * .14;
+    cx.fillStyle = "#ffe6a8"; cx.beginPath(); cx.arc(r.x, r.y, 2.4, 0, 7); cx.fill();
+    if (Math.abs(r.y - r.ty) < 4) { burst(r.tx, r.ty, r.opts); rockets.splice(i, 1); }
+  }
+  cx.globalCompositeOperation = "lighter";
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]; p.x += p.vx; p.y += p.vy; p.vy += p.smoke ? -.01 : .045; p.vx *= .985; p.vy *= .985; p.life -= p.decay;
+    if (p.life <= 0) { parts.splice(i, 1); continue; }
+    cx.globalAlpha = Math.max(0, p.life) * (p.smoke ? .35 : 1); cx.fillStyle = p.col;
+    cx.beginPath(); cx.arc(p.x, p.y, p.size * (p.smoke ? (2 - p.life) : 1), 0, 7); cx.fill();
+  }
+  cx.globalAlpha = 1;
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+const centerOf = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+
+// ===== 開始畫面 =====
+function chips(el, items, get, set) {
+  el.innerHTML = "";
+  for (const [k, label] of items) {
+    const b = document.createElement("button"); b.className = "chip"; b.textContent = label;
+    b.setAttribute("aria-pressed", k === get());
+    b.onclick = () => { set(k); [...el.children].forEach(c => c.setAttribute("aria-pressed", c === b)); };
+    el.appendChild(b);
+  }
+}
+chips($("dialects"), Object.keys(FW_WORDS).map(d => [d, d]), () => st.dialect, v => st.dialect = v);
+chips($("levels"), Object.entries(LEVELS), () => st.level, v => st.level = v);
+
+// ===== 出題 =====
+const TONE = /[ˊˇˋ⁺ˆ]+$/;
+const TONE_MARKS = ["", "ˊ", "ˇ", "ˋ", "⁺", "ˆ"];
+function pickWords() {
+  const bank = FW_WORDS[st.dialect];
+  const by = n => shuffle(bank.filter(w => w.h.length === n));
+  // 由短到長：2、3、3、4、4（不夠時從全部補）
+  const plan = [2, 3, 3, 4, 4], used = new Set(), out = [];
+  for (const n of plan) { const w = by(n).find(x => !used.has(x.id)); if (w) { used.add(w.id); out.push(w); } }
+  for (const w of shuffle(bank)) { if (out.length >= WORDS) break; if (!used.has(w.id)) { used.add(w.id); out.push(w); } }
+  return out.slice(0, WORDS);
+}
+// 進階：把某個正確音節換成別的聲調，當作陷阱
+function decoys(word) {
+  const real = new Set(word.p), out = [];
+  for (const s of shuffle(word.p)) {
+    const base = s.replace(TONE, ""), cur = (s.match(TONE) || [""])[0];
+    const alt = shuffle(TONE_MARKS.filter(m => m !== cur)).map(m => base + m).find(x => !real.has(x) && !out.includes(x));
+    if (alt) out.push(alt);
+    if (out.length >= 2) break;
+  }
+  return out;
+}
+
+function start() {
+  Object.assign(st, { words: pickWords(), wi: 0, correct: 0, wrong: 0, fw: 0, left: TIME, running: true });
+  st.total = st.words.reduce((n, w) => n + w.h.length, 0);
+  $("wordN").textContent = st.words.length;
+  $("startPanel").hidden = true; $("endPanel").hidden = true; $("ui").hidden = false;
+  st.t0 = performance.now();
+  clearInterval(st.timer);
+  st.timer = setInterval(() => {
+    if (FWX.paused) return;
+    st.left = Math.max(0, TIME - (performance.now() - st.t0) / 1000);
+    const sec = Math.ceil(st.left);
+    if (sec !== +$("timeLeft").textContent && sec <= 10 && sec > 0) SFX.tick();   // 最後 10 秒滴答
+    $("timeLeft").textContent = sec;
+    $("timeBar").style.width = `${st.left / TIME * 100}%`;
+    if (st.left <= 0) finish(false);
+  }, 100);
+  showWord();
+}
+
+let sel = null, drag = null;
+function showWord() {
+  const w = st.words[st.wi];
+  $("wordNo").textContent = st.wi + 1;
+  $("meaning").textContent = `${w.m}（${w.cat.replace(/^\(\d+\)/, "")}）`;
+  const box = $("stars"); box.innerHTML = "";
+  w.h.forEach((ch, i) => {
+    const s = document.createElement("div");
+    s.className = "star"; s.dataset.i = i;
+    s.innerHTML = `<div class="star-in"><span>${ch}</span><span class="py">${w.p[i]}</span></div>`;
+    s.addEventListener("pointerdown", e => beginDrag(e, s));
+    box.appendChild(s);
+  });
+  const tiles = shuffle(w.p.map((p, i) => ({ p, i })).concat(st.level === "hard" ? decoys(w).map(p => ({ p, i: -1 })) : []));
+  const tb = $("tiles"); tb.innerHTML = "";
+  for (const t of tiles) {
+    const el = document.createElement("div");
+    el.className = "tile"; el.textContent = t.p; el.dataset.p = t.p;
+    el.addEventListener("click", () => { if (sel) tryLink(sel, el); });
+    tb.appendChild(el);
+  }
+  sel = null;
+  say(w.s);
+}
+function say(src) { voice.pause(); voice.src = src; voice.currentTime = 0; voice.play().catch(() => {}); }
+$("listen").onclick = () => say(st.words[st.wi].s);
+
+// ===== 拉引信 =====
+const svg = $("links");
+function line(x1, y1, x2, y2, color, dash) {
+  const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  Object.entries({ x1, y1, x2, y2, stroke: color, "stroke-width": 3, "stroke-linecap": "round", "stroke-dasharray": dash || "" }).forEach(([k, v]) => l.setAttribute(k, v));
+  svg.appendChild(l); return l;
+}
+function beginDrag(e, star) {
+  if (!st.running || star.classList.contains("lit")) return;
+  e.preventDefault();
+  document.querySelectorAll(".star.sel").forEach(s => s.classList.remove("sel"));
+  star.classList.add("sel"); sel = star; SFX.pop();
+  const [x, y] = centerOf(star);
+  drag = { star, l: line(x, y, x, y, "#ffd36b", "6 6"), moved: false };
+}
+addEventListener("pointermove", e => {
+  if (!drag) return;
+  drag.moved = true;
+  drag.l.setAttribute("x2", e.clientX); drag.l.setAttribute("y2", e.clientY);
+  const over = document.elementFromPoint(e.clientX, e.clientY);
+  document.querySelectorAll(".tile.hot").forEach(t => t.classList.remove("hot"));
+  if (over && over.classList.contains("tile")) over.classList.add("hot");
+});
+addEventListener("pointerup", e => {
+  if (!drag) return;
+  const d = drag; drag = null; d.l.remove();
+  document.querySelectorAll(".tile.hot").forEach(t => t.classList.remove("hot"));
+  const over = document.elementFromPoint(e.clientX, e.clientY);
+  if (over && over.classList.contains("tile")) tryLink(d.star, over);
+  // 沒拖到拼音：保持選取，讓玩家改用「點字再點拼音」
+});
+
+function tryLink(star, tile) {
+  if (!st.running || tile.classList.contains("used")) return;
+  const w = st.words[st.wi], i = +star.dataset.i;
+  const [sx, sy] = centerOf(star), [tx, ty] = centerOf(tile);
+  star.classList.remove("sel"); sel = null;
+  if (tile.dataset.p === w.p[i]) {
+    st.correct++; st.fw++; $("fwCount").textContent = st.fw;
+    tile.classList.add("used"); SFX.fuse();
+    const fuse = line(tx, ty, sx, sy, "#ffb347");
+    fuse.setAttribute("stroke-dasharray", `${Math.hypot(sx - tx, sy - ty)}`);
+    fuse.animate([{ strokeDashoffset: 0, opacity: 1 }, { strokeDashoffset: Math.hypot(sx - tx, sy - ty), opacity: .2 }], { duration: 380, easing: "ease-in" }).onfinish = () => {
+      fuse.remove(); star.classList.add("lit"); SFX.ding(0);
+      burst(sx, sy, { n: 60 + st.correct * 2, speed: 3 + Math.min(2, st.correct * .1) });
+      if (w.h.every((_, k) => $("stars").children[k].classList.contains("lit"))) wordDone();
+    };
+  } else {
+    st.wrong++;
+    const l = line(sx, sy, tx, ty, "#ff7b6b");
+    setTimeout(() => l.remove(), 350);
+    tile.classList.remove("shake"); void tile.offsetWidth; tile.classList.add("shake");
+    dud(tx, ty); SFX.buzz();
+  }
+}
+
+function wordDone() {
+  const w = st.words[st.wi];
+  say(w.s); SFX.ding(2);
+  // 整個詞連完：一排煙火從地面升空
+  [...$("stars").children].forEach((s, k) => { const [x, y] = centerOf(s); setTimeout(() => launch(x, y - 60, { n: 90, ring: true }), k * 120); });
+  st.wi++;
+  setTimeout(() => { if (!st.running) return; st.wi < st.words.length ? showWord() : finish(true); }, 1300);
+}
+
+// ===== 計分：正確率 × 14 ＋ 剩餘時間 × 6（全部完成才算時間分）=====
+function score(allDone) {
+  const done = st.correct / st.total;
+  const acc = st.correct + st.wrong ? st.correct / (st.correct + st.wrong) : 0;
+  const accPts = 14 * done * acc;
+  const timePts = allDone ? 6 * st.left / TIME : 0;
+  return { done, acc, accPts, timePts, total: Math.round((accPts + timePts) * 100) / 100, used: TIME - st.left };
+}
+function finish(allDone) {
+  if (!st.running) return;
+  st.running = false; clearInterval(st.timer);
+  const s = score(allDone);
+  for (let k = 0; k < 8; k++) setTimeout(() => launch(W * (.15 + .7 * Math.random()), H * (.15 + .3 * Math.random()), { n: 110, ring: k % 2 === 0 }), k * 220);
+  setTimeout(() => {
+    $("ui").hidden = true; $("endPanel").hidden = false;
+    $("endTitle").textContent = allDone ? "煙火大會圓滿成功！" : "時間到！";
+    allDone ? SFX.fanfare() : SFX.buzz();
+    $("endScore").textContent = s.total.toFixed(2);
+    $("endRows").innerHTML = [
+      ["完成的字", `${st.correct} / ${st.total}`],
+      ["連錯次數", st.wrong],
+      ["正確率分（滿分 14）", s.accPts.toFixed(2)],
+      ["時間分（滿分 6）", allDone ? s.timePts.toFixed(2) : "未全部完成，0"],
+      ["用時", `${s.used.toFixed(1)} 秒`],
+    ].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join("");
+    // 放在主遊戲裡時，把分數交回去（主遊戲 80 分＋這裡 20 分）
+    if (EMBEDDED && parent !== window) parent.postMessage({ type: "fireworks-complete", score: s.total, correct: st.correct, wrong: st.wrong, total: st.total, seconds: s.used }, "*");
+  }, 1800);
+}
+
+FWX.mount({
+  title: "煙火連線 玩法",
+  steps: [
+    "聽讀音（可按 <b>🔊 再聽一次</b>），上面是這個詞的<b>客字</b>。",
+    "從客字<b>拖一條引信</b>到下面正確的<b>拼音</b>，放開就點火。也可以先點字、再點拼音。",
+    "連對會放煙火，整個詞連完會一起升空，接著換下一個詞。",
+    "<b>60 秒</b>內完成 5 個詞，最後 10 秒會有滴答聲提醒。",
+  ],
+  tips: ["正確率最多 14 分，全部完成時剩下的時間最多 6 分。", "進階難度會多 2 個聲調不同的陷阱拼音。"],
+});
+// 開說明時暫停倒數：關掉後把暫停的時間補回去
+let pausedAt = 0;
+FWX.onPause = () => { pausedAt = performance.now(); };
+FWX.onResume = () => { if (pausedAt) st.t0 += performance.now() - pausedAt; pausedAt = 0; };
+$("startBtn").onclick = FWX.firstHelp(start);
+$("againBtn").onclick = start;
+if (EMBEDDED) FWX.firstHelp(start)();
+</script>
+</body>
+</html>

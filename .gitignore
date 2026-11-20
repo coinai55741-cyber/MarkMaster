@@ -1,4 +1,4 @@
-# 目前只上傳「聽聲應答」（含獅狗吉祥物）版本，其他先排除
+# 只上傳「聽聲應答」（含獅狗吉祥物）和「煙火小遊戲」，其他先排除
 /*
 !/.gitignore
 !/README.md
@@ -10,4 +10,17 @@
 !/fetch_audio.py
 !/make_lipsync.py
 !/context_lines.py
+# 煙火小遊戲
+!/fw_index.html
+!/fw_tone.html
+!/fw_rhythm.html
+!/fw_aim.html
+!/fireworks.html
+!/fw_engine.js
+!/fw_sfx.js
+!/fw_common.css
+!/fireworks_data.js
+!/audio_fw/
+!/build_fireworks_data.py
+!/make_onsets.py
 __pycache__/
