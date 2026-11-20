@@ -1,0 +1,12 @@
+# 目前只上傳「聽聲應答」（含獅狗吉祥物）版本，其他先排除
+/*
+!/.gitignore
+!/README.md
+!/index.html
+!/data.js
+!/avatar/
+!/audio/
+!/build_data.py
+!/fetch_audio.py
+!/make_lipsync.py
+__pycache__/
