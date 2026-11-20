@@ -4,6 +4,7 @@ import csv, re, sys, time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import requests
+from context_lines import dialogue_lines, needed
 
 HERE = Path(__file__).parent
 SRC = HERE.parent / "data" / "情境應答"
@@ -18,6 +19,9 @@ def jobs():
             for r in csv.DictReader(f):
                 for p in PREFIXES:
                     seen[r[f"{p}序號"]] = r[f"{p}MP3"]
+        lines = dialogue_lines(d)
+        for n in needed():   # 前情句
+            seen[str(n)] = lines[n]["MP3網址"]
         for n, url in seen.items():
             yield d, n, url
 

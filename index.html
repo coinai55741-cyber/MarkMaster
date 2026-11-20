@@ -39,6 +39,10 @@
   .prompt { text-align: center; min-height: 1.5em; }
   .prompt .h { font-size: 22px; font-weight: 700; }
   .prompt .m { color: var(--muted); font-size: 15px; }
+  .ctx { color: var(--muted); font-size: 15px; margin-bottom: 4px; }
+  .ctx .h::before { content: "前情："; font-size: 12px; }
+  .ctx .m { margin-left: 8px; font-size: 13px; }
+  .ctxnote { color: var(--muted); font-size: 14px; }
   .opts { display: grid; gap: 12px; }
   .opt { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; cursor: pointer; font: inherit; color: var(--ink); }
   .opt:hover:not(.done), .opt:focus-visible { border-color: var(--brand); outline: none; }
@@ -147,18 +151,26 @@ async function initLion() {
 }
 const toKeys = k => (k || []).map(([t, mouth]) => ({ t, mouth }));
 
-// 播一句話；有對嘴資料就讓獅子跟著音檔動嘴
-function play(src, btn, keys) {
+// 播一句話；有對嘴資料就讓獅子跟著音檔動嘴。onDone：播完後接著做的事（用來連播前情句）
+function play(src, btn, keys, onDone) {
   $("audioErr").textContent = "";
+  audio.onended = audio.onpause = null;
   document.querySelectorAll(".play.on").forEach(b => b.classList.remove("on"));
   audio.pause();
   if (!src) return;
   audio.src = src;
   if (btn) btn.classList.add("on");
-  audio.onended = audio.onpause = () => btn && btn.classList.remove("on");
+  audio.onpause = () => btn && btn.classList.remove("on");
+  audio.onended = () => { btn && btn.classList.remove("on"); if (onDone) setTimeout(onDone, 450); };
   audio.onerror = () => { btn && btn.classList.remove("on"); $("audioErr").textContent = "音檔載入失敗，請檢查網路後再按一次。"; };
   audio.play().then(() => { if (lion && keys) lion.speak(audio, toKeys(keys)); }).catch(() => {});
 }
+// 依序播多句（前情句 → 問句）；中途按別的播放會打斷
+function playSeq(lines, btn) {
+  const go = i => i < lines.length && play(lines[i].s, btn, lines[i].k, () => go(i + 1));
+  go(0);
+}
+const ctxHtml = item => item.ctx.map(c => `<div class="ctx"><span class="h">${esc(c.h)}</span><span class="m">${esc(c.m)}</span></div>`).join("");
 
 // ---- 開始畫面 ----
 function chips(el, items, current, onPick) {
@@ -208,7 +220,9 @@ function renderQ() {
   $("prompt").innerHTML = "";
   $("feedback").textContent = ""; $("feedback").className = "feedback";
   $("nextBtn").hidden = true;
-  $("playQ").onclick = () => play(item.q.s, $("playQ"), item.q.k);
+  const seq = [...item.ctx, item.q];
+  $("playQ").onclick = () => playSeq(seq, $("playQ"));
+  if (item.ctx.length) $("prompt").innerHTML = `<div class="ctxnote">這題會先播前一句對話，再播問句</div>`;
   if (lion) lion.setExpression("neutral");
   const box = $("opts"); box.innerHTML = "";
   opts.forEach((o, n) => {
@@ -220,7 +234,7 @@ function renderQ() {
     o.el = btn;
     box.appendChild(btn);
   });
-  play(item.q.s, $("playQ"), item.q.k);
+  playSeq(seq, $("playQ"));
 }
 
 function answer(n) {
@@ -238,7 +252,7 @@ function answer(n) {
     s.onclick = e => { e.stopPropagation(); play(o.s, null, o.k); };
     o.el.appendChild(s);
   });
-  $("prompt").innerHTML = `<div class="h">${esc(cur.item.q.h)}</div><div class="m">${esc(cur.item.q.m)}</div>`;
+  $("prompt").innerHTML = `${ctxHtml(cur.item)}<div class="h">${esc(cur.item.q.h)}</div><div class="m">${esc(cur.item.q.m)}</div>`;
   $("feedback").textContent = right ? "答對了！" : "再想想，正確答案是綠色那句。";
   $("feedback").className = "feedback " + (right ? "ok" : "bad");
   $("scoreNow").textContent = `${state.score} 分`;
@@ -261,7 +275,7 @@ function finish() {
   const ul = $("review"); ul.innerHTML = "";
   state.log.forEach((l, i) => {
     const li = document.createElement("li");
-    li.innerHTML = `<div class="r"><strong>${l.right ? "✅" : "❌"} ${i + 1}.</strong><span>${esc(l.item.q.h)}</span></div>
+    li.innerHTML = `${ctxHtml(l.item)}<div class="r"><strong>${l.right ? "✅" : "❌"} ${i + 1}.</strong><span>${esc(l.item.q.h)}</span></div>
       <div class="m">${esc(l.item.q.m)}</div>
       <div class="r" style="margin-top:6px">→ <span>${esc(l.item.a.h)}</span></div>
       ${l.right ? "" : `<div class="m">你選的：${esc(l.chosen.h)}</div>`}`;

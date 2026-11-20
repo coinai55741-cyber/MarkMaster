@@ -2,6 +2,7 @@
 題庫有改（重跑 make_pairs.py）之後，再跑一次這支。"""
 import csv, json, re
 from pathlib import Path
+from context_lines import CONTEXT, dialogue_lines
 
 HERE = Path(__file__).parent
 SRC = HERE.parent / "data" / "情境應答"
@@ -28,12 +29,18 @@ def line(r, prefix):
             "s": audio(CUR, n), "k": lipsync(CUR, n)}
 
 
+def ctx_line(n, r):
+    return {"h": r["客語"], "m": r["華語"], "p": r["拼音"], "s": audio(CUR, n), "k": lipsync(CUR, n)}
+
+
 data = {}
 for d in DIALECTS:
     CUR = d
+    dlg = dialogue_lines(d)
     with open(SRC / f"情境應答題庫_{d}.csv", encoding="utf-8-sig") as f:
         data[d] = [{
             "id": int(r["題號"]), "topic": r["主題"],
+            "ctx": [ctx_line(n, dlg[n]) for n in CONTEXT.get(int(r["問句序號"]), [])],
             "q": line(r, "問句"), "a": line(r, "答句"),
             "decoy": r["可當誘答"] == "是",
             "near": [line(r, "近誘答1"), line(r, "近誘答2")],

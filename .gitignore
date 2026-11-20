@@ -9,4 +9,5 @@
 !/build_data.py
 !/fetch_audio.py
 !/make_lipsync.py
+!/context_lines.py
 __pycache__/

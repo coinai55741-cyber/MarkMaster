@@ -3,6 +3,7 @@
 需要 ffmpeg。已做過的會略過。"""
 import csv, importlib.util, json, subprocess, sys, tempfile
 from pathlib import Path
+from context_lines import dialogue_lines, needed
 
 HERE = Path(__file__).parent
 SRC = HERE.parent / "data" / "情境應答"
@@ -24,6 +25,9 @@ def main():
                 for r in csv.DictReader(f):
                     for p in PREFIXES:
                         lines[r[f"{p}序號"]] = r[f"{p}拼音"]
+            ctx = dialogue_lines(d)
+            for n in needed():   # 前情句
+                lines[str(n)] = ctx[n]["拼音"]
             for n, pinyin in lines.items():
                 out = HERE / "lipsync" / d / f"{n}.json"
                 mp3 = HERE / "audio" / d / f"{n}.mp3"
