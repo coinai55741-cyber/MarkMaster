@@ -2,7 +2,21 @@
 /*
 !/.gitignore
 !/README.md
+!/聽聲應答規格書.md
+!/符咒打殭屍企劃書.md
 !/index.html
+!/zombie_tone.html
+!/dream1.html
+!/dream/
+!/ui/
+!/make_dream_bg.py
+!/gen_warm_bg.py
+!/snap_bg.py
+!/make_ui_assets.py
+!/gen_ui_mock.py
+!/make_vn.py
+!/tone.js
+!/zombie/
 !/data.js
 !/avatar/
 !/audio/
@@ -24,3 +38,13 @@
 !/build_fireworks_data.py
 !/make_onsets.py
 __pycache__/
+# Codex 生的原圖（每張約 2.7MB），只留對齊後的 bg2_*.png
+/dream/gen/
+# 遊戲沒用到的圖（留在本機當素材，不進版本控制）
+/dream/bg_*.png
+/dream/bg2_ui_*_soft.png
+/dream/props/
+/dream/boss_small.png
+/ui/icon_small_rank*.png
+/ui/icons/*.svg
+/dream/bg2_ui_lobby_bg.png

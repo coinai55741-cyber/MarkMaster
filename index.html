@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>聽聲應答｜原型</title>
+<title>聽聲應答＋符咒打殭屍｜原型</title>
 <style>
   :root {
     --bg: #f6f3ec; --card: #fffdf8; --ink: #2b2a27; --muted: #77726a; --line: #e2dccf;
@@ -65,6 +65,11 @@
   .review .r { display: flex; gap: 8px; align-items: baseline; }
   .review .m { color: var(--muted); font-size: 14px; }
   .err { color: var(--bad); font-size: 14px; }
+  .stage2 { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 50; background: #0d1630; }
+  .split { display: flex; justify-content: center; gap: 24px; color: var(--muted); margin: -4px 0 8px; }
+  .split b { color: var(--ink); font-size: 20px; }
+  .review li.head { background: none; border: 0; padding: 12px 0 0; font-weight: 700; }
+  .review .tone { display: flex; justify-content: space-between; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -74,7 +79,7 @@
   <!-- 開始畫面 -->
   <section id="start">
     <h1>聽聲應答</h1>
-    <p class="sub">先聽一句客語，再從三句客語裡選出最適合的回答。共 10 題。</p>
+    <p class="sub">第一關「聽聲應答」：聽一句客語，從三句客語裡選出最適合的回答，共 7 題、70 分。<br>第二關「符咒打殭屍」：照殭屍額頭上字的聲調畫一筆把它封印，共 3 波、30 分。</p>
     <div class="panel">
       <div class="field">
         <label>腔調</label>
@@ -113,6 +118,7 @@
   <section id="result" hidden>
     <h1>結算</h1>
     <div class="score" id="finalScore"></div>
+    <div class="split"><span>聽聲應答 <b id="s1"></b> / 70</span><span>符咒打殭屍 <b id="s2"></b> / 30</span></div>
     <p class="sub" id="finalNote" style="text-align:center"></p>
     <ul class="review" id="review"></ul>
     <div class="actions" style="display:flex;gap:12px;justify-content:center">
@@ -126,13 +132,13 @@
 <script src="avatar/vector-avatar.js"></script>
 <script src="avatar/shisa.js"></script>
 <script>
-const ROUND = 10;
+const ROUND = 7;          // 第一關 7 題 × 10 分；第二關（zombie_tone.html）30 分
 const LEVELS = {
   easy: { name: "初級", hint: "錯誤選項來自其他情境，聽懂大概意思就能排除。" },
   mid:  { name: "中級", hint: "一個錯誤選項來自同一段對話，一個來自其他情境。" },
   hard: { name: "進階", hint: "兩個錯誤選項都來自同一段對話，要真的聽懂問題。" },
 };
-const state = { dialect: "四縣腔", level: "easy", pinyin: false, qs: [], i: 0, score: 0, log: [] };
+const state = { dialect: "四縣腔", level: "easy", pinyin: false, qs: [], i: 0, score: 0, log: [], tone: null };
 const $ = id => document.getElementById(id);
 const audio = new Audio();
 
@@ -202,7 +208,7 @@ function buildRound() {
 }
 
 async function start() {
-  Object.assign(state, { qs: buildRound(), i: 0, score: 0, log: [] });
+  Object.assign(state, { qs: buildRound(), i: 0, score: 0, log: [], tone: null });
   show("game");
   await initLion();
   if (lion) lion.play("mb_wave");
@@ -256,7 +262,7 @@ function answer(n) {
   $("feedback").textContent = right ? "答對了！" : "再想想，正確答案是綠色那句。";
   $("feedback").className = "feedback " + (right ? "ok" : "bad");
   $("scoreNow").textContent = `${state.score} 分`;
-  $("nextBtn").textContent = state.i + 1 < ROUND ? "下一題" : "看結果";
+  $("nextBtn").textContent = state.i + 1 < ROUND ? "下一題" : "進入第二關";
   $("nextBtn").hidden = false;
   if (lion) {
     lion.setExpression(right ? "smile" : "troubled");
@@ -265,13 +271,29 @@ function answer(n) {
   play(cur.item.a.s, null, cur.item.a.k);
 }
 
-$("nextBtn").onclick = () => { audio.pause(); state.i++; state.i < ROUND ? renderQ() : finish(); };
+$("nextBtn").onclick = () => { audio.pause(); state.i++; state.i < ROUND ? renderQ() : stage2(); };
+
+// ---- 第二關：符咒打殭屍（整頁 iframe，打完用 postMessage 回傳分數）----
+function stage2() {
+  const f = document.createElement("iframe");
+  f.className = "stage2"; f.id = "stage2"; f.allow = "autoplay";
+  f.src = `zombie_tone.html?embedded&dialect=${encodeURIComponent(state.dialect)}&level=${state.level}`;
+  document.body.appendChild(f);
+}
+addEventListener("message", e => {
+  if (!e.data || e.data.type !== "zombie-complete" || !$("stage2")) return;
+  state.tone = e.data;
+  $("stage2").remove();
+  finish();
+});
 
 function finish() {
   show("result");
-  $("finalScore").textContent = state.score;
+  const tone = state.tone ? state.tone.score : 0;
+  $("finalScore").textContent = (state.score + tone).toFixed(2);
+  $("s1").textContent = state.score; $("s2").textContent = tone.toFixed(2);
   const n = state.log.filter(l => l.right).length;
-  $("finalNote").textContent = `${state.dialect}・${LEVELS[state.level].name}・答對 ${n} / ${ROUND} 題`;
+  $("finalNote").textContent = `${state.dialect}・${LEVELS[state.level].name}・聽聲應答答對 ${n} / ${ROUND} 題`;
   const ul = $("review"); ul.innerHTML = "";
   state.log.forEach((l, i) => {
     const li = document.createElement("li");
@@ -286,6 +308,14 @@ function finish() {
     li.append(s, s2);
     ul.appendChild(li);
   });
+  if (state.tone) {
+    const h = document.createElement("li"); h.className = "head"; h.textContent = "符咒打殭屍：每個字的精準度"; ul.appendChild(h);
+    state.tone.rows.forEach(r => {
+      const li = document.createElement("li"); li.className = "tone";
+      li.innerHTML = `<span>${esc(r.ch)}　${esc(r.syl)}　<span class="m">本調 ${esc(r.base)}</span></span><b>${r.breach ? "衝過防線" : (r.s * 100).toFixed(1) + "%"}</b>`;
+      ul.appendChild(li);
+    });
+  }
 }
 
 $("startBtn").onclick = start;

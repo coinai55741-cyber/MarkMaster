@@ -1,0 +1,1348 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>午休驅魔記｜原型</title>
+<!-- 說明頁、腔調選擇、排行榜、結算頁：直接沿用「穿搭小達人」(fukuchange_v2) 編譯後的樣式，畫面結構與 class 名稱一致 -->
+<link rel="stylesheet" href="dream/lobby.css">
+<style>
+  /* 還沒提供的圖片：先留白（虛線框），版面尺寸照原本的 class */
+  img[data-ph] { background: #f3ebde; outline: 2px dashed #c9b49a; outline-offset: -2px; }
+  /* 說明頁、結算頁背景（320×180 像素圖整數放大；窄螢幕用 cover 裁切） */
+  .lobby-screen, .result-screen { background-color: #3a2c24 !important; background-size: cover !important; background-position: center !important;
+    background-repeat: no-repeat !important; background-attachment: fixed !important; image-rendering: pixelated; }
+  .story-screen { background-image: url("dream/lobby_bg.webp") !important; background-size: cover !important; background-position: center !important; }
+  .lobby-screen { background-image: url("dream/lobby_bg.webp") !important; image-rendering: auto; }   /* 說明頁用 Codex 原圖（比轉成 320×180 清楚） */
+  .result-screen { background-image: url("dream/result_bg.webp") !important; image-rendering: auto; }   /* 脫離夢境：排行榜用原圖 */
+  /* ===== 首頁像素說明視窗 ===== */
+  #lobby .dg-lobby-card {
+    position: relative;
+    isolation: isolate;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transform: none;
+  }
+  .dg-lobby-frame {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    filter: drop-shadow(0 5px 0 #2b1d38);
+  }
+  .dg-lobby-frame > span, .dg-lobby-frame > span::before, .dg-lobby-frame > span::after {
+    --cut: calc(var(--step) * 2);
+    position: absolute;
+    clip-path: polygon(
+      var(--cut) 0, calc(100% - var(--cut)) 0,
+      calc(100% - var(--cut)) var(--step), calc(100% - var(--step)) var(--step),
+      calc(100% - var(--step)) var(--cut), 100% var(--cut),
+      100% calc(100% - var(--cut)), calc(100% - var(--step)) calc(100% - var(--cut)),
+      calc(100% - var(--step)) calc(100% - var(--step)), calc(100% - var(--cut)) calc(100% - var(--step)),
+      calc(100% - var(--cut)) 100%, var(--cut) 100%,
+      var(--cut) calc(100% - var(--step)), var(--step) calc(100% - var(--step)),
+      var(--step) calc(100% - var(--cut)), 0 calc(100% - var(--cut)),
+      0 var(--cut), var(--step) var(--cut), var(--step) var(--step), var(--cut) var(--step)
+    );
+  }
+  .dg-lobby-frame > span { --step: 6px; inset: 0; background: #4c355c; }
+  .dg-lobby-frame > span::before { content: ""; --step: 5px; inset: 4px; background: #e4c28a; }
+  .dg-lobby-frame > span::after { content: ""; --step: 4px; inset: 6px; background: #fff6e8; }
+  #lobby .dg-lobby-card h1 { color: #3b2d4f; }
+  .lobby-info.dg-info { max-height: none !important; overflow: visible !important; gap: .75rem !important; padding: 0 !important; }
+  .dg-lead {
+    margin: 0;
+    padding: .65rem .85rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .55rem;
+    background: #3b2d4f;
+    color: #fff6e8;
+    border: 2px solid #5a4775;
+    box-shadow: 0 3px 0 #281e38;
+    font-size: .93rem;
+    font-weight: 700;
+    line-height: 1.55;
+  }
+  .dg-lead .ic { margin-top: .25em; color: #f2c14e; }
+  .dg-rounds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: .65rem; }
+  .dg-round {
+    --round-ink: #21554a;
+    padding: .7rem .8rem;
+    background: #edf7ef;
+    border: 2px solid #9fc8b2;
+    box-shadow: 0 3px 0 #9fc8b2;
+    color: #362e39;
+  }
+  .dg-round.s2 { --round-ink: #543964; background: #f3edf8; border-color: #c4b2d5; box-shadow: 0 3px 0 #c4b2d5; }
+  .dg-round-head {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    grid-template-areas: "icon stage points" "icon title title";
+    align-items: center;
+    gap: .12rem .55rem;
+    margin-bottom: .45rem;
+    color: var(--round-ink);
+  }
+  .dg-round-icon { grid-area: icon; display: grid; place-items: center; width: 2rem; height: 2rem; background: var(--round-ink); color: #fff6e8; }
+  .dg-round-icon .ic { width: 1.25rem; height: 1.25rem; }
+  .dg-round-icon img { width: .85rem; height: 1.5rem; }
+  .dg-round-stage { grid-area: stage; font-size: .8rem; font-weight: 800; }
+  .dg-round-head h2 { grid-area: title; margin: 0; font-size: 1rem; line-height: 1.3; }
+  .dg-round-points { grid-area: points; white-space: nowrap; font-size: 1.05rem; line-height: 1.1; }
+  .dg-round p { margin: 0; font-size: .9rem; line-height: 1.5; text-wrap: balance; }
+  .dg-round p + p { margin-top: .25rem; }
+  /* 同排行榜按鈕的黃色實心星星 */
+  .dg-lead .star-icon, .dg-rule .star-icon { color: #f7d134; font-size: 1.05em; line-height: 1.35; flex: none; text-shadow: 0 1px 0 #8a6a10; }
+  .dg-rule { margin: 0; display: flex; align-items: center; justify-content: center; gap: .35rem; color: #694c29; font-size: .85rem; line-height: 1.45; }
+  .dg-rule .ic { width: 16px; height: 16px; color: #af651a; }
+  .dg-rule strong { text-wrap: balance; }
+  #lobby .dg-lobby-card .start {
+    border-radius: 0 !important;
+    box-shadow: inset 0 -4px 0 #ad7521 !important;
+    clip-path: polygon(4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
+      100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%,
+      4px calc(100% - 4px), 0 calc(100% - 4px), 0 4px, 4px 4px);
+  }
+  #lobby .dg-lobby-card .start:focus-visible { outline: 2px solid #3b2d4f; outline-offset: -6px; }
+  /* 即時排行榜：標題橫幅下面的空白縮小 */
+  #lobby .lobby-leaderboard { padding-top: 22px; }
+  @media (max-width: 1279px) {
+    #lobby .lobby-leaderboard { display: none !important; }
+    /* 同穿搭小達人：推到工具列最右邊、咖啡色膠囊、黃色實心星星 */
+    #lobby .lobby-rank-toggle-btn { display: inline-flex !important; align-items: center; justify-content: center; gap: 4px; pointer-events: auto; cursor: pointer;
+      margin-left: auto !important; margin-right: 16px !important; width: 90px; height: 25.2px; padding: 5.6px 11.2px !important; border: 0;
+      border-radius: 12px !important; color: #fff !important; background: #836225 !important; font-size: 14px !important; font-weight: 500 !important;
+      line-height: 16.8px !important; box-shadow: 0 2px 6px rgba(0,0,0,.15) !important; }
+    #lobby .lobby-rank-toggle-btn .star-icon { color: #f7d134; font-size: 15px; line-height: 1; }
+  }
+  @media (max-width: 370px) {
+    #lobby .lobby-toolbar { gap: 8px; }
+    #lobby .lobby-back-button { min-width: 0; padding-inline: 12px; font-size: .92rem; }
+    #lobby .lobby-rank-toggle-btn { margin-right: 8px !important; flex: none; }
+  }
+  /* 總排名彈窗：多一欄分數 */
+  .lobby-rank-modal-list li { grid-template-columns: 40px 1fr 64px 64px !important; }
+  .lobby-rank-modal-list li.m-head { background: none !important; border: 0 !important; padding: 0 12px !important; font-size: .78rem; color: #8a7a6a; }
+  .lobby-rank-modal-list li.m-head span:nth-child(n+3) { text-align: right; }
+  .lobby-rank-modal-list li:nth-child(-n+4):not(.m-head) { background: #fffbdf; border-color: #fde047; }
+  .lobby-rank-modal-list li:nth-child(n+5) { background: #fff; border-color: #e5edf2; }
+  .lobby-rank-modal-list li.me { background: #eef7f1 !important; border-color: #168276 !important; }
+  .m-score { text-align: right; color: #836225; font-variant-numeric: tabular-nums; }
+  /* 說明頁：睡著的學生頭上漂浮的符紙（疊在背景上，位置用背景的 320×180 座標換算，見 placeLobbyFu） */
+  .lobby-fu { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }   /* 最上層（排行榜彈窗 9999 還是蓋得住它） */
+  .lobby-fu img { position: absolute; left: calc(var(--ox) + var(--x) * var(--s)); top: calc(var(--oy) + var(--y) * var(--s));
+    width: calc(8 * var(--k, 1) * var(--s)); height: calc(16 * var(--k, 1) * var(--s)); image-rendering: pixelated; transform: rotate(var(--r));
+    filter: drop-shadow(0 0 calc(1 * var(--s)) #fff6d0) drop-shadow(0 0 calc(3 * var(--s)) #ffe08acc) drop-shadow(0 0 calc(7 * var(--s)) #ffcf5a66);
+    animation: lobbyFu 3.6s ease-in-out infinite; animation-delay: var(--d); }
+  @keyframes lobbyFu { 0%, 100% { translate: 0 0; opacity: .85; } 50% { translate: 0 calc(-3 * var(--s)); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .lobby-fu img { animation: none; } }
+  /* 趴在桌上睡著的學生（含桌椅、書包），站在窗邊的陽光地板上 */
+  .lobby-fu .kidwrap { position: absolute; left: 0; bottom: 0; width: calc(110 * var(--s)); height: calc(120 * var(--s)); }
+  .lobby-fu .kidwrap img { left: calc(var(--x) * var(--s)); top: calc(var(--y) * var(--s)); }
+  @media (orientation: portrait), (max-width: 899px) { .lobby-fu .kidwrap { display: none; } }   /* 手機版不放人物和符紙 */
+  .lobby-fu .kidwrap canvas.kid-aura { position: absolute; pointer-events: none; }
+  .lobby-fu img.kid { width: calc(var(--w) * var(--s)); height: auto; transform: none; filter: none;   /* 不要套到符紙的黃色光暈 */
+    animation: none; image-rendering: auto; }
+  /* 題目回顧不放場景圖：右邊的內容佔滿整列 */
+  #resReview .sentence-review-layout { display: block !important; }
+  /* 成績頁（600px 以上）：字級照穿搭小達人平板版；手機直式不覆寫，直接用 lobby.css 裡穿搭小達人的手機版樣式 */
+  @media (min-width: 600px) {
+    /* 成績頁字級：照穿搭小達人平板版（style.css「結算頁面與排行榜擴展樣式」），橫向畫面也用這組，不用 8px 的精簡版 */
+    .result-panel { width: min(680px, 88vw) !important; gap: 24px !important; }
+    .result-summary-card { padding: 2rem 1.8rem !important; border-radius: 32px !important; }
+    .result-summary-card h1 { font-size: 2.2rem !important; }
+    .result-summary-card .result-comment { max-width: none !important; font-size: 1.1rem !important; line-height: 1.55 !important; }
+    .result-avatar-placeholder { width: 170px !important; height: 180px !important; }
+    .result-badge span { font-size: 1.05rem !important; padding: 6px 20px !important; }
+    .result-badge b { font-size: 1.6rem !important; }
+    .result-metrics { width: 100% !important; grid-template-columns: repeat(4, 1fr) !important; gap: 16px !important; padding: 1rem !important; margin: .4rem 0 1rem !important; }
+    .result-metrics div { min-height: 56px !important; gap: 6px !important; }
+    .result-metrics b, .result-metrics button, .result-metrics span { font-size: 1.1rem !important; }
+    .result-summary-actions button { min-height: 48px !important; font-size: 1.05rem !important; }
+    /* 排行榜卡：同穿搭小達人平板版 */
+    .result-ranking-card { padding: 1.8rem 1.5rem !important; border-radius: 32px !important; }
+    .result-ranking-card h2 { font-size: 1.45rem !important; padding: 8px 48px !important; }
+    .result-rank-head, .result-rank-list, .result-rank-list li { width: 100% !important; max-width: none !important; box-sizing: border-box !important; }
+    .result-rank-head, .result-rank-list li { grid-template-columns: 50px minmax(0, 1fr) 100px 100px !important; font-size: .98rem !important; padding: 10px 14px !important; }   /* 四欄都包在同一列的底色裡 */
+    .result-rank-place img { width: 26px !important; height: 30px !important; }
+    .result-ranking-note { padding: 14px 18px !important; }
+    .result-ranking-note b { font-size: 1rem !important; }
+    .result-ranking-note ol { font-size: .92rem !important; }
+    .rank-foot { font-size: 1rem !important; }
+    /* 題目回顧：字級照穿搭小達人（桌機版 20／18px、平板標題 1.45rem），版面維持現在的格式 */
+    .sentence-review-card { padding: 1.8rem 1.5rem !important; border-radius: 32px !important; }
+    .sentence-review-card h2 { font-size: 1.45rem !important; padding: 8px 48px !important; }
+    .sentence-review-item { padding: 1.25rem !important; border-radius: 20px !important; }
+    .sentence-review-item header, .sentence-review-item header h3 { font-size: 1.15rem !important; }
+    .sentence-review-badges span, .sentence-review-badges em { font-size: 1rem !important; }
+    .sentence-hint b { font-size: 1.15rem !important; }
+    .sentence-hint p { font-size: 1.1rem !important; line-height: 1.6 !important; }
+    .sentence-context-mistakes small { font-size: .95rem !important; }
+    .sentence-context-mistakes p { font-size: 1.1rem !important; }
+  }
+  /* 題目回顧（手機直式）：精簡版只有 9–11px 太小，改成跟題目句差不多大 */
+  @media (max-width: 599px) {
+    .sentence-review-item header, .sentence-review-item header h3 { font-size: 1rem !important; }
+    .sentence-review-badges span, .sentence-review-badges em { font-size: .85rem !important; }
+    .sentence-hint b { font-size: 1rem !important; }
+    .sentence-hint p, .sentence-context-mistakes p { font-size: .98rem !important; line-height: 1.6 !important; }
+    .sentence-context-mistakes small { font-size: .85rem !important; }
+  }
+  /* 成績頁的星等 */
+  .result-stars { display: flex; justify-content: center; gap: 2px; margin: .2rem 0 0; font-size: 1.4rem; line-height: 1; }
+  .result-stars span { color: #e3dccd; }
+  .result-stars span.on { color: #f7d134; }
+  .rv-say { display: inline-grid; place-items: center; width: 30px; height: 30px; margin: 0 8px 0 0; vertical-align: middle; flex: none; border: 2px solid #4c355c; border-radius: 50%;
+    background: #8f6ad0; color: #fff; cursor: pointer; padding: 0; font-size: 16px; box-shadow: 0 2px 0 #4c355c55; }
+  .rv-say.on { background: #f2c14e; color: #4c355c; } .rv-say:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+  .m-only { display: none; }   /* 手機版才顯示的字（例如「下面」），在手機的 @media 裡打開 */
+  .lobby-back-button { background: #fff !important; }   /* 返回列表：底色不透明（原本 #ffffffab 半透明） */
+  [hidden] { display: none !important; }   /* 穿搭小達人的樣式會蓋掉 hidden（例如彈窗 display:flex） */
+  :root { --hakka-font: "Noto Sans TC", system-ui, sans-serif; }   /* 同穿搭小達人；客語擴充字交給瀏覽器自動找字型（不要指定 SimSun-ExtB，字形會不對） */
+
+  /* ===== 作答畫面（全螢幕疊加式；class 一律加 dg- 前綴，避免和穿搭小達人的樣式衝突）===== */
+  .dg-screen { position: fixed; inset: 0; overflow: hidden; background: #241b3a; color: #2d2440; font-family: var(--hakka-font); }
+  .dg-soft { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(14px) saturate(.85) brightness(.78); }
+  .dg-stage { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .dg-stage canvas { display: block; image-rendering: pixelated; }
+  #dgSpark { position: absolute; left: 0; top: 0; pointer-events: none; }
+  .dg-stage.dream canvas { animation: dgDream .8s ease-in-out; }
+  @keyframes dgDream { 0% { filter: none; } 45% { filter: blur(7px) brightness(1.45) saturate(.7); opacity: .35; } 100% { filter: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .dg-stage.dream canvas { animation: dgFade .15s; } @keyframes dgFade { from { opacity: .4; } } }
+  .dg-screen .lobby-toolbar { z-index: 6; }
+  .dg-hud { position: absolute; top: 20px; z-index: 5; display: flex; gap: 10px; align-items: center; }
+  .dg-hud.center { left: 50%; transform: translateX(-50%); }
+  .dg-hud.right { right: 24px; }
+  .dg-sign, .dg-fu, .dg-time { background: #fff6e8; border: 3px solid #4c355c; border-radius: 6px; box-shadow: 0 3px 0 #4c355c55; padding: 6px 14px; font-size: 20px; font-weight: 800; color: #4c355c; white-space: nowrap; }
+  .dg-fu { display: inline-flex; align-items: center; gap: 8px; transition: transform .15s; }
+  .dg-fu.bump { transform: scale(1.1); box-shadow: 0 0 16px #ffd66a; }
+  .dg-fu img { width: 16px; height: 32px; image-rendering: pixelated; }
+  .dg-time { font-variant-numeric: tabular-nums; font-size: 18px; }
+  /* 下方互動層 */
+  .dg-ui { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+  .dg-ui > * { pointer-events: auto; }
+  .ic { width: 1em; height: 1em; vertical-align: -.14em; fill: currentColor; flex: none; }
+  /* 視覺小說式訊息框：頭像、名字牌、台詞、再聽一次、繼續提示，全部在同一個框裡 */
+  .dg-msg { position: absolute; left: 40px; bottom: 40px; width: min(1140px, 44vw); min-height: 200px; display: flex; gap: 16px; align-items: stretch;
+            background: #fff6e8f7; border: 4px solid #4c355c; border-radius: 8px; box-shadow: 0 4px 0 #4c355c55, inset 0 0 0 3px #fff6e8, inset 0 0 0 5px #d9c3a3; padding: 18px 18px 14px 16px; }
+  .dg-msg-name { position: absolute; left: 18px; top: -24px; background: #4c355c; color: #fff6e8; font-size: 18px; font-weight: 800; padding: 3px 18px 4px; border-radius: 6px 6px 0 0; letter-spacing: .1em; }
+  .dg-msg-face { flex: none; align-self: flex-end; background: #efe4ff; border: 3px solid #4c355c; border-radius: 6px; image-rendering: pixelated; }
+  .dg-msg-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .dg-msg-text { flex: 1; font-size: clamp(22px, 1.6vw, 30px); line-height: 1.55; color: #3a2d4a; padding-top: 6px; }
+  .dg-msg-text .dim { color: #8a7d9c; }
+  .dg-msg-ctrl { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+  /* 題目音檔總進度條：前情提要／題目分段，長度照音檔秒數；可拖動、可點、可用方向鍵 */
+  .dg-bar { min-width: 0; margin: 4px 0 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; touch-action: none; padding: 4px 0; border-radius: 6px; }
+  .dg-bar:focus-visible { outline: 3px solid #8f6ad0; outline-offset: 2px; }
+  .dg-bar-segs { flex: 1; display: flex; gap: 0; position: relative; padding-top: 24px; }
+  .dg-bar .seg { position: relative; min-width: 40px; height: 20px; background: #e6dcf0; border: 2px solid #4c355c; border-left-width: 0; border-right-width: 0; }
+  .dg-bar .seg:first-child { border-left-width: 2px; border-radius: 6px 0 0 6px; } .dg-bar .seg:last-of-type { border-right-width: 2px; border-radius: 0 6px 6px 0; }
+  .dg-bar .seg:first-child:last-of-type { border-radius: 6px; }
+  .dg-bar .seg + .seg { border-left: 2px dashed #4c355c; }   /* 前情和題目的分界 */
+  .dg-bar .seg + .seg.q > span { left: 4px; }   /* 「題目」標在題目那段的開頭（前情那段不標字） */
+  .dg-bar .seg > i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #b9a3d8; }
+  .dg-bar .seg.q { background: #fbe7b0; min-width: 90px; } .dg-bar .seg.q > i { background: #f2c14e; }
+  .dg-bar .seg > span { position: absolute; left: 0; bottom: calc(100% + 2px); font-size: 16px; font-weight: 800; color: #6f5f80; white-space: nowrap; }
+  .dg-bar .seg.q > span { color: #a06a10; } .dg-bar .seg.cur > span { text-decoration: underline 2px; text-underline-offset: 3px; }
+  .dg-bar .knob { position: absolute; bottom: -5px; width: 16px; height: 30px; margin-left: -8px; background: #fff6e8; border: 3px solid #4c355c; border-radius: 4px; pointer-events: none; box-shadow: 0 2px 0 #4c355c66; }
+  .dg-bar time { flex: none; font-size: 17px; font-weight: 700; color: #6f5f80; font-variant-numeric: tabular-nums; padding-top: 22px; }
+  .dg-cue { color: #4c355c; font-size: 22px; animation: dgCue .9s steps(2) infinite; } @keyframes dgCue { 50% { transform: translateY(4px); opacity: .4; } }
+  .dg-replay { display: inline-flex; align-items: center; gap: 8px; min-width: 160px; height: 52px; padding: 0 16px; border: 3px solid #4c355c; border-radius: 6px; background: #8f6ad0; color: #fff; font: inherit; font-size: 19px; font-weight: 800; cursor: pointer; box-shadow: 0 3px 0 #4c355c66; }
+  .dg-replay .ic { font-size: 24px; }
+  .dg-replay.on { animation: dgPulse 1s infinite; } @keyframes dgPulse { 50% { background: #a988e0; } }
+  .dg-opts { position: absolute; right: 40px; bottom: 132px; width: min(670px, 35vw); display: grid; gap: 12px; }
+  .dg-opt { display: flex; gap: 14px; align-items: flex-start; text-align: left; min-height: 100px; padding: 14px 18px; background: #fff6e8f5; border: 4px solid #4c355c; border-radius: 8px; box-shadow: 0 4px 0 #4c355c55; cursor: pointer; font: inherit; color: inherit; }
+  .dg-opt:hover:not(.done) { background: #fffdf6; transform: translateY(-2px); }
+  .dg-opt:focus-visible { outline: 4px solid #f2c14e; outline-offset: 2px; }
+  .dg-opt .k { flex: none; width: 40px; height: 40px; display: grid; place-items: center; background: #4c355c; color: #fff; border-radius: 6px; font-size: 20px; font-weight: 800; }
+  .dg-opt .b { flex: 1; min-width: 0; }
+  .dg-opt .h { font-size: clamp(22px, 1.5vw, 30px); font-weight: 700; line-height: 1.4; }
+  .dg-opt .p { font-size: clamp(16px, 1vw, 20px); color: #75698f; }
+  .dg-opt .m { display: none; }   /* 華語意思：遊戲中不顯示，最後成績頁才看得到 */
+  .dg-opt .mark { display: none; font-size: 16px; font-weight: 800; margin-bottom: 2px; }
+  .dg-opt.done { cursor: default; }
+  .dg-opt.ok { background: #e6f5e9f5; border-color: #2e8b57; }
+  .dg-opt.ok .mark { display: flex; gap: 4px; align-items: center; color: #2e8b57; }
+  .dg-opt.bad { background: #fbe9e6f5; border-color: #c0392b; } .dg-opt.bad .mark { display: flex; gap: 4px; align-items: center; color: #c0392b; }
+  .dg-opt .say1 { display: none; flex: none; width: 48px; height: 48px; border: 0; background: transparent; color: #4c355c; font-size: 26px; cursor: pointer; }
+  .dg-opt.done .say1 { display: block; }
+  .dg-fb { position: absolute; right: 40px; width: min(670px, 35vw); bottom: calc(132px + var(--opts-h, 340px) + 12px); text-align: center; font-size: 26px; font-weight: 800; padding: 8px; border-radius: 8px; background: #fff6e8f0; border: 3px solid #4c355c; display: none; }
+  .dg-fb.ok { display: block; color: #2e8b57; } .dg-fb.bad { display: block; color: #c0392b; }
+  .dg-next { position: absolute; right: 40px; bottom: 40px; width: 250px; height: 68px; border: 4px solid #4c355c; border-radius: 8px; background: #f2c14e; color: #4c355c; font: inherit; font-size: 24px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 0 #4c355c55; }
+  .dg-paper { position: fixed; z-index: 7; width: 32px; height: 64px; image-rendering: pixelated; pointer-events: none; filter: drop-shadow(0 0 8px #ffd66a); }
+  .dg-next { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  /* 1366 寬左右：頭像 1×、尺寸縮小 */
+  @media (max-width: 1500px) {
+    .dg-msg { left: 24px; bottom: 24px; width: 44vw; min-height: 170px; }
+    .dg-opts { right: 24px; bottom: 108px; } .dg-fb { right: 24px; bottom: calc(108px + var(--opts-h, 300px) + 10px); }
+    .dg-next { right: 24px; bottom: 24px; width: 220px; height: 60px; } .dg-opt { min-height: 88px; padding: 10px 14px; }
+  }
+  /* 直式（平板直向、手機）：場景在上，互動在下，單欄 */
+  @media (orientation: portrait), (max-width: 899px) {
+    .dg-screen { position: fixed; overflow-y: auto; }
+    .dg-soft { position: fixed; }
+    .dg-stage { position: relative; left: auto; top: auto; transform: none; margin: 100px auto 0; width: fit-content; }
+    .dg-hud.center { top: 58px; }   /* 手機：標題放在返回列表／符紙那排的下面，不重疊 */ .dg-hud.right { top: 14px; right: 12px; } .dg-sign, .dg-fu, .dg-time { font-size: 16px; padding: 4px 10px; }
+    .dg-time { display: none; }
+    .dg-ui { position: relative; inset: auto; padding: 12px 12px 96px; }
+    .dg-msg, .dg-opts, .dg-fb { position: static; width: auto; }
+    .dg-msg { position: relative; left: auto; bottom: auto; margin: 30px 0 12px; min-height: 150px; }
+    .dg-msg-name { left: 50%; transform: translateX(-50%); }
+    /* 手機：頭像＋台詞一排，進度條、按鈕各自滿版一排 */
+    .dg-msg { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; align-items: start; }
+    .dg-msg-body { display: contents; }
+    .dg-msg-face { grid-column: 1; grid-row: 1; width: 84px !important; height: auto !important; align-self: start; }
+    .dg-msg-text { grid-column: 2; grid-row: 1; font-size: 20px; }
+    .dg-bar { grid-column: 1 / -1; margin: 6px 0 8px; }
+    .dg-msg-ctrl { grid-column: 1 / -1; }
+    .dg-msg-text { font-size: 22px; } .dg-opt .h { font-size: 22px; } .dg-opt { min-height: 76px; }
+    .dg-opts { gap: 10px; } .dg-fb { margin-bottom: 10px; }
+    .dg-next { position: fixed; left: 12px; right: 12px; bottom: 12px; width: auto; height: 56px; z-index: 8; }
+  }
+  /* ===== 第二關 ===== */
+  .s2-prog { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 10px; background: #fff6e8; border: 3px solid #4c355c; border-radius: 6px; padding: 5px 14px; font-weight: 800; color: #4c355c; font-size: 17px; }
+  .s2-prog i { width: 26px; height: 22px; border: 3px solid #4c355c; border-radius: 4px; background: #fff; }
+  .s2-prog i.on { background: #f2c14e; } .s2-prog i.x { background: #c9c0d3; background-image: linear-gradient(45deg, transparent 44%, #c0392b 44% 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #c0392b 44% 56%, transparent 56%); } .s2-prog i.now { background: #fff; box-shadow: 0 0 0 3px #f2c14e88; }
+  .s2-word { position: absolute; left: 40px; bottom: 40px; width: min(570px, 33vw);   /* 縮小 1/4 */ background: #fff6e8f7; border: 4px solid #4c355c; border-radius: 8px; box-shadow: 0 4px 0 #4c355c55; padding: 20px 14px 12px; z-index: 4;
+    transform: scale(.7); transform-origin: left bottom; }   /* 電腦版整張縮成 70%（以左下角為準） */
+  .s2-word .name { position: absolute; left: 14px; top: -20px; background: #4c355c; color: #fff6e8; font-weight: 800; padding: 2px 14px 3px; border-radius: 6px 6px 0 0; font-size: 14px; letter-spacing: .1em; }
+  .s2-word .listen { position: absolute; right: 10px; top: 8px; display: inline-flex; gap: 5px; align-items: center; border: 3px solid #4c355c; border-radius: 6px; background: #8f6ad0; color: #fff; font: inherit; font-size: 13px; font-weight: 800; padding: 4px 9px; cursor: pointer; }
+  .s2-cells { display: flex; gap: 9px; min-height: 105px; align-items: stretch; margin-top: 14px; }
+  .s2-cell { position: relative; flex: 1; max-width: 128px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 3px dashed #b9a6cf; border-radius: 8px; background: #fffdf7; padding: 10px 6px; }
+  .s2-cell .h { font-size: clamp(26px, 1.95vw, 36px); font-weight: 700; color: #3a2d4a; line-height: 1.1; }
+  .s2-cell .p { font-size: clamp(14px, 1vw, 18px); color: #5d4f73; font-weight: 700; }
+  .s2-cell.cur { border: 4px solid #4c355c; background: #f2c14e; animation: s2Breath 1.2s ease-in-out infinite; }
+  @keyframes s2Breath { 50% { box-shadow: 0 0 0 6px #f2c14e66; } }
+  .s2-cell.done { border: 3px solid #2e8b57; background: #e4f5e9; }
+  .s2-cell .stamp { position: absolute; right: -8px; top: -9px; width: 29px; height: 29px; display: grid; place-items: center; border: 3px solid #c0392b; border-radius: 50%; color: #c0392b; background: #fff6e8; font-weight: 900; font-size: 14px; transform: rotate(-12deg); }
+  .s2-cell .pct { font-size: 12px; font-weight: 800; color: #2e8b57; }
+  .s2-tip { font-size: 17px; line-height: 1.6; color: #3a2d4a; }
+  .s2-pad { position: absolute; right: 40px; bottom: 40px; width: 352px; background: #fff6e8f7; border: 4px solid #4c355c; border-radius: 8px; box-shadow: 0 4px 0 #4c355c55; padding: 12px 34px 12px; z-index: 4; }
+  .s2-pad .title { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 20px; font-weight: 800; color: #3a2d4a; margin-bottom: 6px; }
+  .s2-pad .title b { font-size: 26px; } .s2-pad .title span span { color: #5d4f73; }
+  .s2-hint { flex: none; background: #f2c14e; border: 3px solid #4c355c; border-radius: 6px; padding: 2px 10px; font-size: 16px; font-weight: 800; color: #4c355c; }
+  .s2-sandhi { font-size: 14px; color: #b0476a; font-weight: 700; min-height: 1.2em; }
+  #s2PadCv { display: block; width: 280px; height: 220px; border-radius: 6px; background: #2b2350; border: 3px solid #4c355c; touch-action: none; cursor: crosshair; }
+  .s2-fb { min-height: 1.5em; font-size: 16px; font-weight: 800; text-align: center; margin-top: 6px; color: #4c355c; }
+  .s2-fb.ok { color: #2e8b57; } .s2-fb.bad { color: #c0392b; } .s2-fb.mid { color: #b06a1a; }
+  .s2-score { text-align: center; margin-top: 6px; } .s2-score span { display: inline-block; background: #f2c14e; border: 3px solid #4c355c; border-radius: 6px; padding: 4px 14px; font-weight: 800; color: #4c355c; font-size: 18px; }
+  /* 殭屍額頭的符（整個詞直排，目前的字發光） */
+  /* 殭屍王出場：名牌橫幅、落地灰塵 */
+  .s2-boss-title { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; pointer-events: none; overflow: hidden; }
+  /* 帶子比畫面寬很多（左右各多 30vw），斜切後兩端也不會露出空白 */
+  .s2-boss-title .band { width: 160vw; margin-left: -30vw; justify-self: start; padding: 16px 0 18px; background: #2a1450f2;
+    border-top: 4px solid #f2c14e; border-bottom: 4px solid #f2c14e; box-shadow: 0 0 40px #8f6ad0aa; transform: skewX(-12deg); }
+  .s2-boss-title .in { display: flex; align-items: center; justify-content: center; gap: clamp(14px, 2vw, 32px); transform: skewX(12deg); }
+  .s2-boss-title .face { width: clamp(84px, 8vw, 150px); height: auto; image-rendering: pixelated; background: #3d2266; border: 4px solid #f2c14e; border-radius: 8px;
+    box-shadow: 0 0 0 3px #2a1450, 0 0 22px #f2c14e88; }
+  .s2-boss-title small { display: block; color: #d9b8ff; font-size: clamp(14px, 1.4vw, 24px); font-weight: 800; letter-spacing: .5em; }
+  .s2-boss-title b { display: block; color: #ffe08a; font-size: clamp(36px, 5.4vw, 96px); font-weight: 900; letter-spacing: .2em;
+    text-shadow: 0 4px 0 #8a4b10, 0 0 24px #f2c14e99; font-family: var(--hakka-font); white-space: nowrap; }
+  .s2-hit { position: fixed; inset: 0; z-index: 25; pointer-events: none; border: 6px solid #b71c1c; }
+  /* 殭屍快走到面前：畫面邊緣紅光閃 */
+  #s2Stage.danger::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2; border: 5px solid #ff3b3b;
+    box-shadow: inset 0 0 70px 24px #ff2d2dcc, 0 0 24px 4px #ff3b3baa; animation: s2Danger .5s ease-in-out infinite alternate; }
+  @keyframes s2Danger { from { opacity: .25; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { #s2Stage.danger::after { animation: none; } }
+  .s2-dust { position: fixed; z-index: 4; width: 14px; height: 14px; background: #cdbbe3; image-rendering: pixelated; pointer-events: none; box-shadow: 4px 4px 0 #9b86b8; }
+  .s2-tali { position: fixed; z-index: 3; transform: translate(-50%, 0) scale(var(--k, 1)); transform-origin: top center; pointer-events: none;
+             background: linear-gradient(#fbe8a6, #f3d36b); border: 3px solid #6b3a1e; box-shadow: inset 0 6px 0 #c0392b, inset 0 -6px 0 #c0392b, 0 4px 0 #6b3a1e55; padding: 12px 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .s2-tali .t { position: relative; display: flex; flex-direction: column; align-items: center; color: #8e1f1f; padding: 2px 6px; border-radius: 4px; }
+  .s2-tali .t b { font-size: 28px; line-height: 1.05; } .s2-tali .t i { font-style: normal; font-size: 13px; font-weight: 800; color: #6b3a1e; }
+  .s2-tali .t.cur { background: #fff6d0; box-shadow: 0 0 12px 4px #ffd66a; }
+  .s2-tali .t.done { opacity: .75; } .s2-tali .t em { position: absolute; right: -14px; top: -4px; font-style: normal; font-size: 13px; font-weight: 900; color: #c0392b; border: 2px solid #c0392b; border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; background: #fff6e8; transform: rotate(-12deg); }
+  .s2-tali.glow { box-shadow: inset 0 6px 0 #c0392b, inset 0 -6px 0 #c0392b, 0 0 calc(16px + var(--fu, 0) * 6px) calc(4px + var(--fu, 0) * 2px) #ffd66a; }
+  .s2-light { position: fixed; z-index: 9; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #fff6c8; box-shadow: 0 0 18px 8px #ffd66a; pointer-events: none; }
+  .s2-spark { position: fixed; z-index: 9; width: 8px; height: 8px; background: #ffd66a; box-shadow: 0 0 8px #fff2b0; pointer-events: none; }
+  @media (max-width: 1500px) { .s2-word { left: 24px; bottom: 24px; } .s2-pad { right: 24px; bottom: 24px; } }
+  @media (orientation: portrait), (max-width: 899px) {
+    .s2-prog { top: 98px; font-size: 14px; white-space: nowrap; padding: 4px 10px; } .s2-prog i { width: 22px; height: 18px; }
+    #stage2 .dg-stage { margin-top: 142px; }
+    .pc-only { display: none; } .m-only { display: inline; }
+    .s2-word, .s2-pad { position: static; width: auto; margin: 12px; } .s2-word { transform: none; }
+    .s2-pad { padding: 12px; } #s2PadCv { margin: 0 auto; width: min(320px, calc(100vw - 60px)); height: 220px; }
+    .s2-cells { min-height: 96px; } .s2-cell .h { font-size: 30px; }
+  }
+  /* ===== 劇情對話層（轉場、殭屍王台詞、醒來）===== */
+  .dg-story { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; padding: 0 24px 40px; background: linear-gradient(transparent 50%, #120c2299); cursor: pointer; }
+  /* ===== GALGAME 對話框 ===== */
+  .dg-story.vn { padding: 0; background: linear-gradient(transparent 62%, #0000002e); }
+  /* 人物大小：以頭為準。--head＝頭的高度，每張圖高度＝--head ÷ --hf（頭佔整張圖的比例）；下面 --cut 的部分藏在對話框後面 */
+  .dg-story.vn { --head: 19vh; --boxtop: calc(3vh + var(--vnbox, 150px)); }
+  .vn-stand, .vn-hero { --h: calc(var(--head) / var(--hf, .4)); height: var(--h); width: auto; max-width: none; pointer-events: none; }
+  .vn-stand { position: absolute; z-index: 1; left: 50%; bottom: calc(var(--boxtop) - var(--h) * var(--cut, .3)); transform: translateX(-50%); filter: drop-shadow(0 6px 18px #0004); }
+  .vn-stand.px { image-rendering: pixelated; }
+  .vn-stand { transform-origin: 50% 100%; transition: filter .25s, scale .25s, translate .25s; }
+  .vn-stand.idle { filter: brightness(.55) saturate(.8) drop-shadow(0 6px 18px #0004); scale: .92; }
+  .vn-box { position: absolute; z-index: 2; left: 50%; bottom: 3vh; transform: translateX(-50%); width: min(1000px, 62vw); min-height: 150px; box-sizing: border-box; padding: 30px 64px 34px 100px;
+    background: repeating-linear-gradient(#fbf8f1f5 0 37px, #e9e2d4f5 37px 38px); border-radius: 4px; box-shadow: 0 6px 22px #0000004d; }
+  .vn-name { position: absolute; left: 36px; top: -26px; min-width: 190px; padding: 7px 40px 9px; box-sizing: border-box; text-align: center; color: #fff; font-weight: 900; font-size: clamp(17px, 1.3vw, 22px); letter-spacing: .12em;
+    background: linear-gradient(90deg, #8ccaf3, #5fa9e6); transform: rotate(-3deg); clip-path: polygon(0 8%, 100% 0, 98% 100%, 2% 92%); box-shadow: 0 2px 0 #3b86c6; }
+  .vn-name[hidden] { display: none; }
+  .vn-text { color: #2b2b30; font-weight: 800; font-size: clamp(19px, 1.55vw, 28px); line-height: 1.75; white-space: pre-wrap; }
+  .vn-next { position: absolute; right: 28px; bottom: 12px; color: #3a3a46; font-size: 14px; animation: vnNext 1s ease-in-out infinite; }
+  @keyframes vnNext { 50% { transform: translateY(4px); opacity: .5; } }
+  /* 電腦版：主角在對話框前面、壓在對話框左緣 */
+  .vn-hero { position: absolute; z-index: 3; left: calc(50% - min(500px, 31vw) - 120px); bottom: 0; filter: drop-shadow(0 4px 10px #0004); }
+  .vn-hero.px { image-rendering: pixelated; }   /* 像素小人：電腦版站在對話框左邊（位置跟插畫主角一樣） */
+  .vn-hero { transform-origin: 50% 100%; transition: filter .25s, scale .25s, translate .25s; }
+  .vn-hero.idle { filter: brightness(.55) saturate(.8) drop-shadow(0 4px 10px #0004); scale: .92; translate: 0 1vh; }
+  /* 跳過故事情境：對話框右下、▼ 的左邊，只有文字 */
+  .vn-skip { position: absolute; right: 50px; bottom: 9px; border: 0; background: none; padding: 2px 6px; color: #6a6f84; font: inherit; font-size: 14px; font-weight: 800; letter-spacing: .06em; cursor: pointer; }
+  .vn-skip:hover { color: #3b86c6; }
+  .vn-skip:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; border-radius: 4px; }
+  @media (orientation: portrait), (max-width: 899px) {
+    /* 手機／窄畫面：主角在左、說話的角色在右，兩人都站在對話框後面（不壓到名牌） */
+    .dg-story.vn { --head: 21vh; --boxtop: calc(12px + var(--vnbox, 120px)); }
+    .vn-box { width: calc(100% - 24px); bottom: 12px; min-height: 0; padding: 26px 20px 34px; }
+    .vn-hero, .vn-hero.px { z-index: 1; left: 2vw; bottom: calc(var(--boxtop) - var(--h) * var(--cut, .22)); }
+    .vn-stand { left: auto; right: 2vw; transform: none; }
+  }
+  @media (orientation: portrait) {
+    .dg-story.vn { --head: min(13vh, 26vw); }
+  }
+  .dg-story .dg-msg { position: relative; left: auto; bottom: auto; width: min(1100px, 100%); min-height: 150px; }
+  .dg-story .dg-msg-text { font-size: clamp(22px, 1.8vw, 32px); }
+  .dg-crack { position: fixed; inset: 0; z-index: 15; pointer-events: none; }
+  .dg-crack path { fill: none; stroke: #e6d8ff; stroke-width: 4; filter: drop-shadow(0 0 6px #9b6dff); stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: crack 1.1s ease-out forwards; }
+  @keyframes crack { to { stroke-dashoffset: 0; } }
+  .dg-vortex { position: fixed; inset: -20%; z-index: 16; pointer-events: none; background: repeating-conic-gradient(from 0deg, #4c2d8a 0 12deg, #2a1950 12deg 24deg); opacity: 0; animation: vortex 1.3s ease-in forwards; }
+  @keyframes vortex { 0% { opacity: 0; transform: rotate(0) scale(1.4); } 55% { opacity: .9; } 100% { opacity: 0; transform: rotate(540deg) scale(.15); } }   /* 最後淡掉，不留殘影 */
+  #dgSrc { position: absolute; left: -9999px; top: 0; width: 280px; height: 300px; }
+</style>
+</head>
+<body>
+<main class="app-shell" id="app">
+
+  <!-- ===== 說明頁（同穿搭小達人 lobby）===== -->
+  <!-- ===== 前導故事（同穿搭小達人 intro：在說明頁之前）===== -->
+  <section class="story-screen" id="intro">
+    <header class="lobby-toolbar" aria-label="前導故事工具列">
+      <button class="lobby-back-button" type="button" id="introBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
+      <button class="text-button sound-toggle-btn" type="button" id="introSound" aria-pressed="true" aria-label="音效按鈕，目前開啟，點擊關閉音效"><img class="sound-icon" src="ui/sound-icon.svg" alt="" aria-hidden="true">音效</button>
+    </header>
+    <!-- 對話用共用的 GALGAME 對話框（#story），人物圖在 dream/vn/ -->
+  </section>
+
+  <section class="lobby-screen" id="lobby" hidden>
+    <header class="lobby-toolbar" aria-label="首頁工具列">
+      <button class="lobby-back-button" type="button" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
+      <button class="text-button sound-toggle-btn" type="button" id="soundBtn" aria-pressed="true" aria-label="音效按鈕，目前開啟，點擊關閉音效"><img class="sound-icon" src="ui/sound-icon.svg" alt="" aria-hidden="true">音效</button>
+      <button class="text-button lobby-rank-toggle-btn" type="button" id="rankToggle"><span class="star-icon" aria-hidden="true">★</span> 排行榜</button>
+    </header>
+    <div class="lobby-fu" id="lobbyFu" aria-hidden="true">
+      <!-- 學生＋符紙：固定在畫面左下角（下半身超出畫面），座標以這一組的左上角為 0 -->
+      <div class="kidwrap">
+        <canvas class="kid-aura" id="kidAura"></canvas>   <!-- 做惡夢的紫色光暈（kidAura 用程式畫） -->
+        <img class="kid" src="dream/lobby_kid.webp?v=2" alt="" style="--x:-32;--y:53;--w:104">
+        <img src="ui/talisman_gold.svg" alt="" style="--x:4;--y:16;--k:1.6;--r:-12deg;--d:0s">
+        <img src="ui/talisman.svg" alt="" style="--x:24;--y:6;--k:1.6;--r:6deg;--d:-1.3s">
+        <img src="ui/talisman.svg" alt="" style="--x:44;--y:18;--k:1.6;--r:16deg;--d:-2.4s">
+      </div>
+    </div>
+    <div class="lobby-card dg-lobby-card">
+      <div class="dg-lobby-frame" aria-hidden="true"><span></span></div>
+      <h1>午休驅魔記</h1>
+      <section class="lobby-info dg-info" aria-label="遊戲說明">
+        <p class="dg-lead"><span class="star-icon" aria-hidden="true">★</span><span>下課時，你趴在桌上睡著了。一睜眼，熟悉的校園竟然變了樣！</span></p>
+        <div class="dg-rounds">
+          <article class="dg-round">
+            <header class="dg-round-head">
+              <span class="dg-round-icon" aria-hidden="true"><svg class="ic"><use href="ui/icons.svg#volume-3"></use></svg></span>
+              <span class="dg-round-stage">第一關</span>
+              <h2>聽客語，選回答</h2>
+              <strong class="dg-round-points">70 分</strong>
+            </header>
+            <p>聽同學說客語，從 3 句客語中選出最合適的回答。</p>
+            <p>共 7 題，答對一題得 10 分，還會收到一張符紙。</p>
+          </article>
+          <article class="dg-round s2">
+            <header class="dg-round-head">
+              <span class="dg-round-icon" aria-hidden="true"><img src="ui/talisman.svg" alt=""></span>
+              <span class="dg-round-stage">第二關</span>
+              <h2>畫聲調，解開夢境</h2>
+              <strong class="dg-round-points">30 分</strong>
+            </header>
+            <p>照著拼音畫出聲調，畫得越準，分數越高。</p>
+          </article>
+        </div>
+        <p class="dg-rule"><span class="star-icon" aria-hidden="true">★</span><strong>滿分 100 分。分數相同時，用時較短的人排名較前。</strong></p>
+      </section>
+      <section class="dialect-panel" aria-label="選擇腔調別">
+        <h2>選擇腔調別</h2>
+        <div class="dialects" id="dialects"></div>
+      </section>
+      <button class="primary start" type="button" id="startBtn" disabled>角色載入中…</button>
+    </div>
+    <aside class="lobby-leaderboard" aria-label="即時排行榜">
+      <img class="lobby-rank-banner" src="ui/rank_banner.png" alt="即時排行榜">
+      <div class="lobby-rank-summary">
+        <p>您目前的排名：<b id="lbMyRank">--</b></p>
+        <p>最佳分數：<b id="lbMyScore">--</b></p>
+        <p>最佳紀錄：<b id="lbMyBest">--</b></p>
+      </div>
+      <button class="lobby-rank-link" type="button" id="lbAll">查看總排名</button>
+      <ol id="lbTop5"></ol>
+    </aside>
+  </section>
+
+  <!-- ===== 作答畫面（全螢幕疊加式）===== -->
+  <section class="dg-screen" id="game" hidden>
+    <div class="dg-soft" id="dgSoft"></div>
+    <header class="lobby-toolbar game-top-actions" aria-label="遊戲工具列">
+      <button class="lobby-back-button" type="button" id="gameBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
+    </header>
+    <div class="dg-hud center"><span class="dg-sign" id="dgSign"></span></div>
+    <div class="dg-hud right"><span class="dg-time" id="dgTime">00:00:00.00</span><span class="dg-fu" id="dgFu"><img src="ui/talisman.svg" alt="">符紙 ×<b id="dgFuN">0</b></span></div>
+    <div class="dg-stage" id="dgStage"><canvas id="dgScene"></canvas><canvas id="dgSpark"></canvas></div>
+    <div class="dg-ui">
+      <div class="dg-msg" id="dgMsg">
+        <span class="dg-msg-name" id="dgName">同學</span>
+        <canvas class="dg-msg-face" id="dgPortrait"></canvas>
+        <div class="dg-msg-body">
+          <div class="dg-msg-text" id="dgPrompt"></div>
+          <div class="dg-bar" id="dgBar" role="slider" tabindex="0" aria-label="題目音檔進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="dg-bar-segs" id="dgBarSegs"></div><time id="dgBarTime">0:00 / 0:00</time></div>
+          <div class="dg-msg-ctrl"><span class="dg-cue" id="dgCue" hidden><svg class="ic" aria-hidden="true"><use href="ui/icons.svg#chevron-right"></use></svg></span><button class="dg-replay" id="dgReplay"><svg class="ic" aria-hidden="true"><use href="ui/icons.svg#volume-3"></use></svg>再聽一次</button></div>
+        </div>
+      </div>
+      <div class="dg-opts" id="dgOpts"></div>
+      <button class="dg-next" id="dgNext" hidden>下一題<svg class="ic" aria-hidden="true"><use href="ui/icons.svg#chevron-right"></use></svg></button>
+    </div>
+  </section>
+
+  <!-- ===== 第二關：封印殭屍王 ===== -->
+  <section class="dg-screen" id="stage2" hidden>
+    <div class="dg-soft" style="background-image:url(dream/bg2_night_soft.png)"></div>
+    <header class="lobby-toolbar game-top-actions" aria-label="遊戲工具列">
+      <button class="lobby-back-button" type="button" id="s2Back" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
+    </header>
+    <div class="dg-hud center"><span class="dg-sign" id="s2Sign">第二關・封印殭屍王</span></div>
+    <div class="s2-prog">封印進度<span id="s2Prog" style="display:flex;gap:8px"></span></div>
+    <div class="dg-hud right"><span class="dg-time" id="s2Time">00:00:00.00</span><span class="dg-fu"><img src="ui/talisman.svg" alt="">符紙 ×<b id="s2FuN">0</b></span></div>
+    <div class="dg-stage" id="s2Stage"><canvas id="s2Scene"></canvas></div>
+    <div class="s2-tali" id="s2Tali" hidden></div>
+    <div class="dg-ui">
+      <div class="s2-word">
+        <span class="name">目前要封印</span>
+        <button class="listen" type="button" id="s2Listen"><svg class="ic" aria-hidden="true"><use href="ui/icons.svg#volume-3"></use></svg>聽這個詞</button>
+        <div class="s2-cells" id="s2Cells"></div>
+      </div>
+      <div class="s2-pad">
+        <div class="title"><span id="s2PadTitle"></span><span class="s2-hint" id="s2Hint" hidden></span></div>
+        <div class="s2-sandhi" id="s2Sandhi"></div>
+        <canvas id="s2PadCv" aria-label="畫聲調的框框：由左往右畫"></canvas>
+        <div class="s2-fb" id="s2Fb" role="status"></div>
+        <div class="s2-score"><span>聲調 <b id="s2Score">0.00</b> / 30</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 劇情對話（點一下繼續）===== -->
+  <!-- GALGAME 樣式：說話的人站在中間（vnStand），主角說話時在對話框左邊出現小半身像（vnHero） -->
+  <div class="dg-story vn" id="story" hidden>
+    <img class="vn-stand" id="vnStand" alt="" hidden>
+    <img class="vn-hero" id="vnHero" alt="" hidden>
+    <div class="vn-box" role="status" aria-live="polite">
+      <span class="vn-name" id="storyName"></span>
+      <div class="vn-text" id="storyText"></div>
+      <button class="vn-skip" type="button" id="vnSkip" hidden>跳過故事情境 ››</button>
+      <span class="vn-next" aria-hidden="true">▼</span>
+    </div>
+  </div>
+
+  <!-- ===== 結算頁（同穿搭小達人 result）===== -->
+  <section class="result-screen" id="result" hidden>
+    <header class="lobby-toolbar" aria-label="結算頁工具列">
+      <button class="lobby-back-button" type="button" id="resBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
+    </header>
+    <article class="result-panel">
+      <section class="result-summary-card" tabindex="0">
+        <h1>恭喜過關！</h1>
+        <p class="result-comment" id="resComment"></p>
+        <div class="result-avatar-placeholder" aria-hidden="true"><img data-ph width="987" height="1593" style="aspect-ratio:987/1593" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt=""></div>
+        <div class="result-stars" id="resStars" role="img"></div>
+        <div class="result-badge"><span id="resDialect"></span><b id="resTitle"></b></div>
+        <div class="result-metrics">
+          <div><b>名次</b><span id="resRank">--</span></div>
+          <div><b>花費時間</b><span id="resTime"></span></div>
+          <div><b>總分數</b><span id="resScore"></span></div>
+          <button type="button" aria-label="查看總排行" id="resAll">總排行<svg class="ic" aria-hidden="true"><use href="ui/icons.svg#chevron-right"></use></svg></button>
+        </div>
+        <div class="result-actions result-summary-actions">
+          <button class="secondary" type="button" id="resHome">返回列表</button>
+          <button class="primary result-replay" type="button" id="resReplay">重玩一次</button>
+        </div>
+      </section>
+      <section class="result-ranking-card" tabindex="0" aria-label="排行榜">
+        <h2 id="resRankTitle" tabindex="-1">排行榜</h2>
+        <div class="result-rank-head"><span>排名</span><span>學員</span><span>分數</span><span>計時</span></div>
+        <ol class="result-rank-list" id="resRankList"></ol>
+        <p class="rank-foot">目前共 <b id="resPeople">0</b> 人參加，共玩 <b id="resPlays">0</b> 次</p>
+        <aside class="result-ranking-note"><b>注意事項</b><ol><li>同分且作答時間相同時，依活動參加先後進行排序。</li><li>本遊戲獎項僅頒發第 1–6 名；第 7–10 名請再接再厲！</li></ol></aside>
+      </section>
+      <section class="sentence-review-card" aria-labelledby="sentence-review-title">
+        <h2 id="sentence-review-title" tabindex="0" role="heading" aria-level="2">題目回顧</h2>
+        <div class="sentence-review-list" id="resReview"></div>
+      </section>
+    </article>
+  </section>
+
+  <!-- ===== 排行榜彈窗（同穿搭小達人，直式手機用）===== -->
+  <div class="lobby-rank-modal-overlay" id="rankModal" role="dialog" aria-modal="true" aria-label="即時排行榜" hidden>
+    <article class="lobby-rank-modal" tabindex="-1">
+      <header><h2>排行榜</h2><button class="lobby-rank-modal-close" type="button" aria-label="關閉排行榜" id="rankClose">×</button></header>
+      <div class="lobby-rank-modal-content">
+        <div class="lobby-rank-modal-summary"><p>您目前的排名：<b id="mMyRank">--</b></p><p>最佳分數：<b id="mMyScore">--</b></p><p>最佳紀錄：<b id="mMyBest">--</b></p></div>
+        <ol class="lobby-rank-modal-list" id="mList"></ol>
+      </div>
+      <footer><button class="secondary" id="rankClose2">關閉彈窗</button></footer>
+    </article>
+  </div>
+</main>
+<div id="dgSrc"></div>
+
+<script src="data.js"></script>
+<script src="dream/vector-avatar.js"></script>
+<script src="dream/sfx.js?v=20261125c"></script>
+<script src="fireworks_data.js"></script>
+<script src="tone.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const IC = n => `<svg class="ic" aria-hidden="true"><use href="ui/icons.svg#${n}"></use></svg>`;
+const PH = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+const ROUND = 7;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = (a, n) => shuffle(a).slice(0, n);
+
+// ---- 時間格式（同穿搭小達人）----
+function formatTime(ms) { const t = Math.floor(ms / 1000), m = Math.floor(t / 60), s = t % 60, c = Math.floor((ms % 1000) / 10); return `00:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(c).padStart(2, "0")}`; }
+function formatRankTime(ms) { const t = Math.floor(ms / 1000), m = Math.floor(t / 60), s = t % 60; return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`; }
+
+// ---- 排行榜（假資料；正式上線時只改這裡，接法同穿搭小達人的 leaderboardService）----
+const leaderboardService = (() => {
+  const entries = [
+    ["林O恩", 97.42, 98000], ["張O彤", 95.18, 104000], ["陳O宇", 93.6, 111000], ["李O澄", 91.27, 96000], ["黃O妍", 88.05, 120000],
+    ["劉O安", 86.73, 101000], ["曾O晴", 84.4, 132000], ["羅O庭", 81.96, 117000], ["鍾O睿", 78.31, 125000], ["彭O萱", 74.88, 109000],
+    ["吳O廷", 71.5, 140000], ["徐O琳", 66.12, 128000], ["邱O翔", 61.03, 150000], ["賴O真", 55.47, 133000], ["葉O豪", 48.9, 145000],
+  ].map(([displayName, score, elapsedMs], i) => ({ displayName, score, elapsedMs, submittedAt: new Date(2026, 10, 20, 9, i).toISOString() }));
+  let mine = null, plays = 120;
+  const rank = list => list.sort((a, b) => b.score - a.score || a.elapsedMs - b.elapsedMs || a.submittedAt.localeCompare(b.submittedAt)).map(e => e);
+  const build = () => {
+    const all = rank(mine ? [...entries, mine] : entries.slice()).map((e, i) => ({ ...e, rank: i + 1, mine: e === mine }));
+    const me = all.find(e => e.mine) || null;
+    return { participantCount: 53 + (mine ? 1 : 0), playCount: plays, entries: all.slice(0, 10), myEntry: me };
+  };
+  return {
+    async getLeaderboard() { return build(); },
+    async submitGameResult({ score, elapsedMs }) {
+      plays++;
+      if (!mine || score > mine.score || (score === mine.score && elapsedMs < mine.elapsedMs)) mine = { displayName: "測○○", score, elapsedMs, submittedAt: new Date().toISOString() };
+      return build();
+    },
+  };
+})();
+let leaderboard = null;
+const medal = rank => rank <= 3
+  ? `<img src="ui/icon_rank${rank}.png" alt="第 ${rank} 名${["金牌", "銀牌", "銅牌"][rank - 1]}"><span class="sr-only">第 ${rank} 名</span>`
+  : `<b>${rank}</b>`;
+function renderLobbyBoard() {
+  const lb = leaderboard; if (!lb) return;
+  $("lbMyRank").textContent = lb.myEntry?.rank ?? "--";
+  $("lbMyBest").textContent = lb.myEntry ? formatTime(lb.myEntry.elapsedMs) : "--";
+  $("lbTop5").innerHTML = lb.entries.slice(0, 5).map(e => `<li><span class="lobby-rank-place" tabindex="0" aria-label="第 ${e.rank} 名，${esc(e.displayName)}，計時 ${formatRankTime(e.elapsedMs)}，分數 ${e.score}">${medal(e.rank)}</span><span class="lobby-rank-name">${esc(e.displayName)}</span><time>${formatRankTime(e.elapsedMs)}</time></li>`).join("");
+  $("lbMyScore").textContent = lb.myEntry ? lb.myEntry.score.toFixed(2) : "--";
+  $("mMyRank").textContent = $("lbMyRank").textContent; $("mMyScore").textContent = $("lbMyScore").textContent; $("mMyBest").textContent = $("lbMyBest").textContent;
+  // 總排名彈窗：前 10 名，多一欄分數（分數到小數 2 位），自己那列標出來
+  $("mList").innerHTML = `<li class="m-head" aria-hidden="true"><span>名次</span><span>學員</span><span>分數</span><span>計時</span></li>` +
+    lb.entries.map(e => `<li${e.mine ? ' class="me"' : ""}><span class="lobby-rank-modal-place" tabindex="0" aria-label="第 ${e.rank} 名，${esc(e.displayName)}，分數 ${e.score.toFixed(2)}，計時 ${formatRankTime(e.elapsedMs)}">${medal(e.rank)}</span><span class="lobby-rank-modal-name">${esc(e.displayName)}${e.mine ? "（你）" : ""}</span><b class="m-score">${e.score.toFixed(2)}</b><time>${formatRankTime(e.elapsedMs)}</time></li>`).join("");
+
+}
+
+// ---- 題目與場景 ----
+const DIALECTS = ["四縣腔", "海陸腔", "大埔腔", "饒平腔", "詔安腔", "南四縣腔"].filter(d => QUIZ[d]);   // 順序同穿搭小達人
+const LEVELS = { easy: "初級", mid: "中級", hard: "進階" };
+const SCENES = {
+  classroom: { name: "教室", topics: ["早安問候", "自我介紹", "上課分組", "午餐", "午休", "自主學習", "多元選修", "升學申請", "交換學生", "選社團", "成立社團"] },
+  corridor: { name: "走廊", topics: ["下課", "走廊受傷", "打掃"] },
+  library: { name: "圖書館", topics: ["去圖書館", "圖書館借書"] },
+  nurse: { name: "保健室", topics: ["生病"] },
+  playground: { name: "操場", topics: ["運動會", "園遊會"] },
+  auditorium: { name: "禮堂", topics: ["合唱團", "演講比賽", "校慶舞會"] },
+  gate: { name: "校門口", topics: ["校外教學", "夏令營", "認識校園"] },
+};
+const sceneOf = t => Object.keys(SCENES).find(k => SCENES[k].topics.includes(t)) || "classroom";
+const st = { dialect: DIALECTS[0], level: "easy", qs: [], i: 0, score: 0, fu: 0, log: [], scene: null, elapsed: 0, sound: true };
+// 計時（兩關合計）：只在玩家作答時走；教學、對話、轉場、動畫時暫停。只拿來排名，不扣分。
+const timer = {
+  base: 0, seg: 0, on: false,
+  reset() { this.base = 0; this.on = false; },
+  resume() { if (!this.on) { this.seg = performance.now(); this.on = true; } },
+  pause() { if (this.on) { this.base += performance.now() - this.seg; this.on = false; } },
+  get() { return this.base + (this.on ? performance.now() - this.seg : 0); },
+};
+function buildRound() {
+  const bank = QUIZ[st.dialect];
+  return pick(bank, ROUND).map(item => {
+    const far = bank.filter(x => x.decoy && x.topic !== item.topic && x.a.h !== item.a.h).map(x => x.a);
+    const wrong = st.level === "hard" ? item.near.slice() : st.level === "mid" ? [pick(item.near, 1)[0], pick(far, 1)[0]] : pick(far, 2);
+    return { item, opts: shuffle([{ ...item.a, right: true }, ...wrong.map(w => ({ ...w, right: false }))]) };
+  });
+}
+
+// ---- 場景背景：溫暖風 bg2_*.png（320×180，1920×1080 剛好 6 倍）----
+// footX/footY/charH：同學腳的位置與身高（背景像素）；同學站中間：左邊是對話框、右邊是選項
+const BG = {};
+// 個別場景的站位（背景像素）：禮堂要站在舞台上，不要站在台下的椅子中間
+const FOOT2 = { auditorium: { footY: 146, charH: 66 } };
+for (const k of Object.keys(SCENES)) {
+  const img = new Image();
+  img.src = `dream/bg2_${k}.png`;
+  BG[k] = Object.assign({ img, w: 320, h: 180, footX: 172, footY: 171, charH: 72, soft: `dream/bg2_${k}_soft.png` }, FOOT2[k] || {});
+}
+
+// ---- 向量同學 → 像素（每格看原圖全解析度、取最多的顏色；嘴巴粉紅色固定保留）----
+const OUT = [34, 28, 40], KEEP = ["#B4505E", "#E0607A", "#F7A6B4"];
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+let av = null, palette = null, src = null;
+const cache = new Map();
+function kmeans(px, k) {
+  const pts = px.slice().sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
+  let c = Array.from({ length: k }, (_, i) => pts[Math.floor((i + .5) * pts.length / k)].slice());
+  for (let it = 0; it < 10; it++) {
+    const s = c.map(() => [0, 0, 0, 0]);
+    for (const p of px) { let bi = 0, bd = 1e9; for (let j = 0; j < k; j++) { const d = (p[0] - c[j][0]) ** 2 + (p[1] - c[j][1]) ** 2 + (p[2] - c[j][2]) ** 2; if (d < bd) { bd = d; bi = j; } } const t = s[bi]; t[0] += p[0]; t[1] += p[1]; t[2] += p[2]; t[3]++; }
+    c = c.map((o, j) => s[j][3] ? [s[j][0] / s[j][3], s[j][1] / s[j][3], s[j][2] / s[j][3]] : o);
+  }
+  return c.map(v => v.map(Math.round));
+}
+function nearest(r, g, b) {
+  const key = (r >> 2) << 12 | (g >> 2) << 6 | (b >> 2);
+  let v = cache.get(key); if (v !== undefined) return v;
+  let bi = 0, bd = 1e9;
+  for (let j = 0; j < palette.length; j++) { const p = palette[j], d = (r - p[0]) ** 2 + (g - p[1]) ** 2 + (b - p[2]) ** 2; if (d < bd) { bd = d; bi = j; } }
+  cache.set(key, bi); return bi;
+}
+function readSource() { const c = av.canvas; src = { w: c.width, h: c.height, d: c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data }; }
+function makePalette() {
+  const px = [], d = src.d;
+  for (let i = 0; i < d.length; i += 28) if (d[i + 3] > 250) px.push([d[i], d[i + 1], d[i + 2]]);
+  if (px.length < 500) return;
+  palette = kmeans(px, 20).concat(KEEP.map(hex)); cache.clear();
+}
+function pixelize(rect, w, h) {
+  const [rx0, ry0, rx1, ry1] = rect, sw = src.w, sh = src.h, sd = src.d;
+  const X0 = rx0 * sw, Y0 = ry0 * sh, cw = (rx1 - rx0) * sw / w, ch = (ry1 - ry0) * sh / h;
+  const step = Math.max(1, Math.floor(Math.min(cw, ch) / 4));
+  const im = new ImageData(w, h), a = im.data, solid = new Uint8Array(w * h), votes = new Uint16Array(palette.length);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    votes.fill(0); let op = 0, all = 0;
+    const xa = Math.floor(X0 + x * cw), xb = Math.floor(X0 + (x + 1) * cw), ya = Math.floor(Y0 + y * ch), yb = Math.floor(Y0 + (y + 1) * ch);
+    for (let sy = ya; sy < yb; sy += step) for (let sx = xa; sx < xb; sx += step) {
+      all++;
+      if (sx < 0 || sy < 0 || sx >= sw || sy >= sh) continue;
+      const o = (sy * sw + sx) * 4;
+      if (sd[o + 3] < 128) continue; op++; votes[nearest(sd[o], sd[o + 1], sd[o + 2])]++;
+    }
+    if (op * 2 < all) continue;
+    let bi = 0; for (let j = 1; j < votes.length; j++) if (votes[j] > votes[bi]) bi = j;
+    const o = (y * w + x) * 4; a[o] = palette[bi][0]; a[o + 1] = palette[bi][1]; a[o + 2] = palette[bi][2]; a[o + 3] = 255; solid[y * w + x] = 1;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (solid[i]) continue;
+    if ((x > 0 && solid[i - 1]) || (x < w - 1 && solid[i + 1]) || (y > 0 && solid[i - w]) || (y < h - 1 && solid[i + w])) { const o = i * 4; a[o] = OUT[0]; a[o + 1] = OUT[1]; a[o + 2] = OUT[2]; a[o + 3] = 255; }
+  }
+  return im;
+}
+const HEAD_RECT = [0.25, 0.1, 0.75, 0.52], PORTRAIT_W = 128;
+const ap = (m, p) => [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
+let rest = null;
+function headRect() {
+  const r = av.renderer; if (!r || !r.rig) return HEAD_RECT;
+  const c = ap(r.view, ap(r.rig.boneAffine("head"), r.lv.doc.skeleton.head_center));
+  if (!rest) rest = c;
+  const dx = (c[0] - rest[0]) / r.W, dy = (c[1] - rest[1]) / r.H;
+  return [HEAD_RECT[0] + dx, HEAD_RECT[1] + dy, HEAD_RECT[2] + dx, HEAD_RECT[3] + dy];
+}
+function fitCanvas(cv, w, h, dpr) { if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } cv.style.width = w / dpr + "px"; cv.style.height = h / dpr + "px"; }
+
+// ---- 每格畫面：場景整數倍放大（以裝置像素計）、四周用柔化背景填滿 ----
+const sceneCv = $("dgScene"), scene = sceneCv.getContext("2d"), sparkCv = $("dgSpark"), spark = sparkCv.getContext("2d");
+const body = document.createElement("canvas"), bc = body.getContext("2d"), face = document.createElement("canvas"), fc = face.getContext("2d");
+const head = $("dgPortrait"), hc = head.getContext("2d");
+const portraitMode = () => matchMedia("(orientation: portrait), (max-width: 899px)").matches;
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const glowCv = document.createElement("canvas"), gc = glowCv.getContext("2d");
+let glowT0 = -1e9;   // 答對時設成 performance.now()，frame() 會畫金光
+function frame(t) {
+  const bg = BG[st.scene];
+  if (!$("game").hidden && av && av.canvas.width && bg && bg.img.complete) {
+    readSource();
+    if (!palette) makePalette();
+    if (palette) {
+      const dpr = window.devicePixelRatio || 1, vw = innerWidth * dpr, vh = innerHeight * dpr;
+      const S = Math.max(1, portraitMode() ? Math.floor((innerWidth - 24) * dpr / bg.w) : Math.floor(Math.min(vw / bg.w, vh / bg.h)));
+      fitCanvas(sceneCv, bg.w * S, bg.h * S, dpr); fitCanvas(sparkCv, bg.w * S, bg.h * S, dpr);
+      scene.imageSmoothingEnabled = false;
+      scene.drawImage(bg.img, 0, 0, bg.w, bg.h, 0, 0, bg.w * S, bg.h * S);
+      // 場景裡的同學：一格 = 背景一格的 1/3（更細），至少 1 個裝置像素
+      const px = Math.max(1, Math.floor(S / 3)), bh = Math.round(bg.charH * S / px), bw = Math.round(bh * 560 / 600);
+      body.width = bw; body.height = bh; bc.putImageData(pixelize([0, 0, 1, 1], bw, bh), 0, 0);
+      const cx = Math.round(bg.footX * S - bw * px / 2), cy = bg.footY * S - bh * px;
+      // 答對：同學身體外圍發金光＋抖動（約 1.4 秒）
+      const ge = (t - glowT0) / 1400;
+      let sx = 0;
+      if (ge >= 0 && ge < 1) {
+        const a = ge < .12 ? ge / .12 : 1 - (ge - .12) / .88;
+        if (ge < .55 && !reduceMotion()) sx = Math.round(Math.sin(t / 26) * 2 * (1 - ge / .55)) * px;
+        glowCv.width = bw; glowCv.height = bh; gc.drawImage(body, 0, 0);
+        gc.globalCompositeOperation = "source-in"; gc.fillStyle = "#ffd54a"; gc.fillRect(0, 0, bw, bh); gc.globalCompositeOperation = "source-over";
+        // 用「加亮」混合畫光：只把背景提亮，不會蓋上一層不透明的黃色
+        scene.save(); scene.globalCompositeOperation = "lighter";
+        // 柔光暈：只畫剪影的模糊陰影（剪影本身移到畫面外），大、小兩層
+        const far = 100000;
+        for (const [blur, col, al] of [[10 * S, "#ffb830", .9], [4 * S, "#ffe27a", .8]]) {
+          scene.globalAlpha = a * al; scene.shadowColor = col; scene.shadowBlur = blur; scene.shadowOffsetX = far;
+          scene.drawImage(glowCv, cx + sx - far, cy, bw * px, bh * px);
+        }
+        // 貼著身體的細亮邊（1 格）
+        scene.shadowColor = "transparent"; scene.shadowOffsetX = 0; scene.globalAlpha = a * .55;
+        for (const [dx, dy] of [[-S, 0], [S, 0], [0, -S], [0, S]]) scene.drawImage(glowCv, cx + sx + dx, cy + dy, bw * px, bh * px);
+        // 往上飄的光點
+        scene.globalAlpha = a; scene.fillStyle = "#fff3b0";
+        for (let n = 0; n < 10; n++) {
+          const ph = (ge * 1.6 + n * .137) % 1;
+          const x = cx + sx + ((n * 53) % 100) / 100 * bw * px, y = cy + bh * px * (1 - ph);
+          scene.globalAlpha = a * Math.sin(ph * Math.PI); scene.fillRect(Math.round(x / S) * S, Math.round(y / S) * S, S, S);
+        }
+        scene.restore();
+      }
+      scene.drawImage(body, cx + sx, cy, bw * px, bh * px);
+      // 對話框旁的大頭像：整數倍
+      const hw = PORTRAIT_W, hh = Math.round(hw * (HEAD_RECT[3] - HEAD_RECT[1]) * 600 / ((HEAD_RECT[2] - HEAD_RECT[0]) * 560));
+      const want = portraitMode() ? 110 : innerWidth >= 1500 ? 256 : 128;
+      const k = Math.max(1, Math.round(want * dpr / hw));
+      face.width = hw; face.height = hh; fc.putImageData(pixelize(headRect(), hw, hh), 0, 0);
+      fitCanvas(head, hw * k, hh * k, dpr); hc.imageSmoothingEnabled = false; hc.clearRect(0, 0, head.width, head.height); hc.drawImage(face, 0, 0, hw * k, hh * k);   // 先清空，否則手移開後會留下殘影
+      // 夢境星點
+      spark.clearRect(0, 0, sparkCv.width, sparkCv.height);
+      for (let n = 0; n < 16; n++) {
+        const a = .5 + .5 * Math.sin(t / 500 + n * 1.7);
+        spark.fillStyle = `rgba(255,248,220,${(a * .75).toFixed(2)})`;
+        spark.fillRect(((n * 37 + 11) % bg.w) * S, ((n * 23 + 5) % Math.round(bg.h * .55)) * S, S, S);
+      }
+    }
+  }
+  st.elapsed = timer.get(); $("dgTime").textContent = $("s2Time").textContent = formatTime(st.elapsed);
+  $("game").style.setProperty("--opts-h", $("dgOpts").offsetHeight + "px");
+  requestAnimationFrame(frame);
+}
+
+// ---- 說話：前情句 → 問句（先都由同學說）----
+const audio = new Audio();
+let speakId = 0;
+// 題目音檔進度條：qbar.lines 是這題要播的句子（前情 + 問句），durs 是各句秒數
+const qbar = { lines: [], durs: [], k: 0, t: 0, drag: false };
+const fmtSec = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}`;
+function buildQBar(lines) {
+  qbar.lines = lines; qbar.durs = lines.map(l => l.s ? 1 : 0); qbar.k = 0; qbar.t = 0;
+  const last = lines.length - 1;
+  $("dgBarSegs").innerHTML = lines.map((l, k) => `<div class="seg ${k === last ? "q" : "c"}"${l.s ? "" : " hidden"}><i></i>${k === last ? "<span>題目</span>" : ""}</div>`).join("") + `<b class="knob"></b>`;
+  lines.forEach((l, k) => {
+    if (!l.s) return;
+    const a = new Audio(); a.preload = "metadata";
+    a.onloadedmetadata = () => { if (qbar.lines === lines) { qbar.durs[k] = a.duration || 1; paintQBar(); } };
+    a.src = l.s;
+  });
+  paintQBar();
+}
+function paintQBar() {
+  const segs = [...$("dgBarSegs").querySelectorAll(".seg")], total = qbar.durs.reduce((a, b) => a + b, 0) || 1;
+  let before = 0;
+  segs.forEach((el, k) => {
+    const d = qbar.durs[k];
+    el.style.flex = `${d || 0} 1 0`;
+    el.querySelector("i").style.width = (k < qbar.k ? 100 : k > qbar.k ? 0 : Math.min(100, qbar.t / (d || 1) * 100)) + "%";
+    el.classList.toggle("cur", k === qbar.k);
+    if (k < qbar.k) before += d;
+  });
+  const now = before + Math.min(qbar.t, qbar.durs[qbar.k] || 0);
+  const cur = segs[qbar.k], knob = $("dgBarSegs").querySelector(".knob");
+  if (cur && knob) knob.style.left = (cur.offsetLeft + cur.offsetWidth * Math.min(1, qbar.t / (qbar.durs[qbar.k] || 1))) + "px";
+  $("dgBarTime").textContent = `${fmtSec(now)} / ${fmtSec(total)}`;
+  $("dgBar").setAttribute("aria-valuenow", Math.round(now / total * 100));
+  $("dgBar").setAttribute("aria-valuetext", `${qbar.k === qbar.lines.length - 1 ? "題目" : "前情提要"} ${fmtSec(now)}，共 ${fmtSec(total)}`);
+}
+// 從第 k0 句的第 t0 秒開始播（拖動進度條就是從那裡重播）
+function sayLines(lines, talking, k0 = 0, t0 = 0) {
+  const id = ++speakId; audio.pause();
+  const onBar = talking && lines === qbar.lines;
+  const go = (k, t) => {
+    if (id !== speakId || k >= lines.length) { $("dgReplay").classList.remove("on"); return; }
+    const l = lines[k]; if (!l.s) return go(k + 1, 0);
+    audio.src = l.s; audio.muted = !st.sound;
+    if (t > 0) audio.addEventListener("loadedmetadata", () => { audio.currentTime = t; }, { once: true });
+    $("dgReplay").classList.toggle("on", talking);
+    if (onBar) { qbar.k = k; qbar.t = t; paintQBar(); }
+    audio.onended = () => { if (onBar) { qbar.t = qbar.durs[k]; paintQBar(); } setTimeout(() => go(k + 1, 0), 450); };
+    audio.play().then(() => {
+      if (onBar) { const tick = () => { if (id !== speakId || audio.paused) return; if (!qbar.drag) { qbar.k = k; qbar.t = audio.currentTime; paintQBar(); } requestAnimationFrame(tick); }; tick(); }
+      if (!talking) return;
+      if (k === lines.length - 1) av.play("explain");
+      av.speak(audio, (l.k || []).map(([t, mouth]) => ({ t, mouth })));
+    }).catch(() => {});
+  };
+  go(k0, t0);
+}
+// 進度條上的位置 → 第幾句、第幾秒
+function qbarPos(clientX) {
+  const segs = [...$("dgBarSegs").querySelectorAll(".seg")];
+  let best = segs.findIndex(el => !el.hidden);
+  segs.forEach((el, k) => { if (!el.hidden && el.getBoundingClientRect().left <= clientX) best = k; });
+  const r = segs[best].getBoundingClientRect();
+  return { k: best, t: Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * (qbar.durs[best] || 0) };
+}
+$("dgBar").addEventListener("pointerdown", e => {
+  if (!qbar.lines.length) return;
+  e.preventDefault(); $("dgBar").setPointerCapture(e.pointerId); qbar.drag = true;
+  speakId++; audio.pause(); $("dgReplay").classList.remove("on");
+  Object.assign(qbar, qbarPos(e.clientX)); paintQBar();
+});
+$("dgBar").addEventListener("pointermove", e => { if (qbar.drag) { Object.assign(qbar, qbarPos(e.clientX)); paintQBar(); } });
+const qbarRelease = () => {
+  if (!qbar.drag) return;
+  qbar.drag = false; DSFX.cursor();
+  const d = qbar.durs[qbar.k] || 0;
+  sayLines(qbar.lines, true, qbar.k, qbar.t >= d - .05 ? Math.max(0, d - .3) : qbar.t);
+};
+$("dgBar").addEventListener("pointerup", qbarRelease);
+$("dgBar").addEventListener("pointercancel", qbarRelease);
+// 鍵盤：左右鍵 ±1 秒，Home 回到開頭
+$("dgBar").addEventListener("keydown", e => {
+  if (!qbar.lines.length || !["ArrowLeft", "ArrowRight", "Home"].includes(e.key)) return;
+  e.preventDefault();
+  const starts = []; const total = qbar.durs.reduce((a, d, k) => (starts[k] = a, a + d), 0);
+  const g = e.key === "Home" ? 0 : Math.max(0, Math.min(total - .3, starts[qbar.k] + qbar.t + (e.key === "ArrowRight" ? 1 : -1)));
+  let k = 0; while (k < qbar.durs.length - 1 && g >= starts[k] + qbar.durs[k]) k++;
+  sayLines(qbar.lines, true, k, g - starts[k]);
+});
+
+// ---- 畫面切換 ----
+function show(id) { for (const s of ["intro", "lobby", "game", "stage2", "result"]) $(s).hidden = s !== id; window.scrollTo(0, 0); }
+// 劇情對話（GALGAME 樣式）：beats = [{ who, text, fx, hero, stand }]
+//   點一下（或按 Enter／空白鍵）換下一句；fx 在顯示這句時執行
+//   hero：主角說話時對話框左邊的小半身像（沒寫＝這句不顯示）
+//   stand：站在畫面中間的角色（沒寫＝沿用上一句，null＝拿掉）
+//   opts.skip：右下角顯示「跳過故事情境」，按了直接結束這段對話
+let skipStory = null, standWho = null, heroSrc = null;   // standWho：站在中間的是誰（第一次放他上來那句的說話者）
+const VN_META = [   // [檔名關鍵字, 頭頂到下巴佔整張圖的比例, 藏在對話框後面的比例]
+  ["hero_surprised_px", .52, .3], ["hero_", .40, .22], ["mate_px", .48, .1], ["mate_", .25, .45],
+];
+function setVnImg(el, src) {
+  if (!src) { el.hidden = true; el.removeAttribute("src"); return; }
+  const m = VN_META.find(([k]) => src.includes(k)) || [, .4, .2];
+  el.style.setProperty("--hf", m[1]); el.style.setProperty("--cut", m[2]);
+  el.classList.toggle("px", /_px\./.test(src));
+  if (el.getAttribute("src") !== src) { el.onerror = () => { el.hidden = true; }; el.src = src; }
+  el.hidden = false;
+}
+function story(beats, opts = {}) {
+  return new Promise(done => {
+    let k = 0;
+    const el = $("story");
+    heroSrc = null; standWho = null;
+    const finish = () => { el.hidden = true; el.onclick = null; removeEventListener("keydown", key); skipStory = null; $("vnSkip").hidden = true; setVnImg($("vnHero"), null); setVnImg($("vnStand"), null); done(); };
+    const showBeat = () => {
+      const b = beats[k];
+      $("storyName").textContent = b.who || ""; $("storyName").hidden = !b.who;
+      $("storyText").textContent = b.text;
+      // 主角：講話時用這句的表情；別人講話時留在畫面上、壓暗（還沒出場過就不顯示）
+      if (b.hero) heroSrc = b.hero;
+      setVnImg($("vnHero"), heroSrc);
+      $("vnHero").classList.toggle("idle", !!heroSrc && !b.hero);
+      if (b.stand !== undefined) { setVnImg($("vnStand"), b.stand); standWho = b.stand ? b.who : null; }
+      $("vnStand").classList.toggle("idle", !!standWho && b.who !== standWho);   // 不是他在講話：壓暗、往後退一點
+      el.style.setProperty("--vnbox", el.querySelector(".vn-box").offsetHeight + "px");   // 手機版：右邊的角色站在對話框上緣
+      if (b.fx) b.fx();
+    };
+    const next = () => {
+      if (el.hidden) { el.onclick = null; removeEventListener("keydown", key); return; }   // 中途按了「返回列表」：這段對話作廢
+      DSFX.page(); k++; if (k < beats.length) showBeat(); else finish(); };
+    const key = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); next(); } };
+    el.hidden = false; el.onclick = next; addEventListener("keydown", key);
+    $("vnSkip").hidden = !opts.skip;
+    skipStory = finish;
+    showBeat();
+  });
+}
+$("vnSkip").onclick = e => { e.stopPropagation(); DSFX.page(); if (skipStory) skipStory(); };
+// 主角從原本的圖閃一閃變成像素畫（進入夢境）
+function flickerTo(el, src) {
+  DSFX.flash("#ffffff", 260);
+  el.animate([{ opacity: 1 }, { opacity: .1 }, { opacity: 1 }, { opacity: 0 }, { opacity: 1 }, { opacity: .2 }, { opacity: 1 }], { duration: 650, easing: "steps(7)" });
+  setTimeout(() => setVnImg(el, src), 330);
+}
+// 夢境裂開的特效
+function crackFx() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "dg-crack"); svg.setAttribute("viewBox", "0 0 100 100"); svg.setAttribute("preserveAspectRatio", "none");
+  svg.innerHTML = ["M50 48 L42 30 L46 18 L38 0", "M50 48 L64 36 L70 20 L84 8", "M50 48 L30 54 L18 50 L0 58", "M50 48 L72 58 L88 54 L100 64", "M50 48 L48 70 L56 84 L52 100", "M50 48 L36 72 L26 92"].map(d => `<path d="${d}" vector-effect="non-scaling-stroke"/>`).join("");
+  document.body.appendChild(svg); DSFX.crack(); DSFX.shake($("game"), 1.6);
+  return svg;
+}
+function chipRow(el, items, cur, onPick) {
+  el.innerHTML = "";
+  items.forEach(([key, label]) => {
+    const b = document.createElement("button"); b.type = "button";
+    const paint = sel => { b.classList.toggle("selected", sel); b.setAttribute("aria-pressed", sel); b.innerHTML = esc(label) + (sel ? `<img class="dialect-check-icon" src="ui/check-circle.png" alt="" aria-hidden="true">` : ""); };
+    paint(key === cur);
+    b.onclick = () => { onPick(key); [...el.children].forEach(c => c._paint(c === b)); };
+    b._paint = paint; el.appendChild(b);
+  });
+}
+chipRow($("dialects"), DIALECTS.map(d => [d, d]), st.dialect, d => st.dialect = d);
+// 難度：說明頁不放選單（版面同穿搭小達人），先用網址參數 ?level=easy|mid|hard
+const qLevel = new URLSearchParams(location.search).get("level"); if (LEVELS[qLevel]) st.level = qLevel;
+$("soundBtn").onclick = $("introSound").onclick = () => {
+  st.sound = !st.sound; audio.muted = !st.sound; DSFX.setMuted(!st.sound);
+  for (const b of [$("soundBtn"), $("introSound")]) { b.setAttribute("aria-pressed", st.sound); b.setAttribute("aria-label", `音效按鈕，目前${st.sound ? "開啟" : "關閉"}，點擊${st.sound ? "關閉" : "開啟"}音效`); b.querySelector("img").src = st.sound ? "ui/sound-icon.svg" : "ui/sound-off-icon.svg"; }
+};
+$("rankToggle").onclick = () => { $("rankModal").hidden = false; };
+$("rankClose").onclick = $("rankClose2").onclick = () => { $("rankModal").hidden = true; };
+$("rankModal").onclick = e => { if (e.target === $("rankModal")) $("rankModal").hidden = true; };
+const toLobby = async () => { speakId++; audio.pause(); timer.pause(); $("story").hidden = true; leaderboard = await leaderboardService.getLeaderboard(); renderLobbyBoard(); show("lobby"); };
+$("gameBack").onclick = $("resBack").onclick = $("resHome").onclick = $("s2Back").onclick = toLobby;
+$("s2Listen").onclick = () => S2.replayWord();
+async function showLeaderboard() { leaderboard = await leaderboardService.getLeaderboard(); renderResult(false); show("result"); $("resRankTitle").scrollIntoView({ behavior: "smooth", block: "start" }); $("resRankTitle").focus({ preventScroll: true }); }
+// 符紙要黏在背景上同一個位置：照 background-size: cover 的算法換算 320×180 的座標
+function placeLobbyFu() {
+  const W = innerWidth, H = innerHeight, sc = Math.max(W / 320, H / 180), el = $("lobbyFu");
+  el.style.setProperty("--s", sc + "px");
+  el.style.setProperty("--ox", (W - 320 * sc) / 2 + "px");
+  el.style.setProperty("--oy", (H - 180 * sc) / 2 + "px");
+}
+addEventListener("resize", placeLobbyFu); placeLobbyFu();
+
+// ---- 說明頁：睡著的學生外圍做惡夢的紫色光暈 ----
+// 剪影往外擴 → 用一直往上捲的雜訊扭曲邊緣（像煙往上冒）→ 模糊、上色。全部自己用 canvas 算，
+// 雜訊圖本身上下左右無縫、取樣時自己繞回去，所以循環時不會出現接縫或色塊（不靠 SVG 濾鏡）。
+const kidAura = (() => {
+  const cv = $("kidAura"), ctx = cv.getContext("2d"), img = document.querySelector(".kidwrap img.kid");
+  const R = .5;                    // 計算用的解析度：CSS 像素的一半（之後放大＋模糊，看不出差別）
+  const PAD = 90;                  // 光暈可以超出人物多少（CSS 像素）
+  const GROW = 13, WARP = 32;      // 剪影往外擴多少、雜訊扭曲多大（CSS 像素）
+  const SPEED = 50;                // 雜訊往上捲的速度（CSS 像素／秒）
+  // 雜訊：用上一版 SVG 濾鏡同一張無縫雜訊圖（dream/noise_tile.png，上半 256×256，R、G 兩個頻道），細顆粒
+  const N = 256, NOISE = new Float32Array(N * N * 2);
+  let noiseReady = false;
+  { const im = new Image(); im.onload = () => {
+      const c = document.createElement("canvas"); c.width = c.height = N; const x = c.getContext("2d", { willReadFrequently: true });
+      x.drawImage(im, 0, 0, N, N, 0, 0, N, N); const d = x.getImageData(0, 0, N, N).data;
+      for (let i = 0; i < N * N; i++) { NOISE[i * 2] = d[i * 4] / 127.5 - 1; NOISE[i * 2 + 1] = d[i * 4 + 1] / 127.5 - 1; }
+      noiseReady = true; start();
+    }; im.src = "dream/noise_tile.png?v=2"; }
+  const NS = 256 / 200;            // 雜訊圖 256 格鋪在 200 CSS 像素裡（跟上一版一樣）
+  const small = document.createElement("canvas"), sc = small.getContext("2d", { willReadFrequently: true });
+  let W = 0, H = 0, A = null, out = null, key = "", raf = 0;
+  function setup() {
+    if (!img.complete || !img.offsetWidth) return false;
+    const w = img.offsetWidth, h = img.offsetHeight, k = w + "x" + h;
+    cv.style.left = (img.offsetLeft - PAD) + "px"; cv.style.top = (img.offsetTop - PAD) + "px";
+    cv.style.width = (w + PAD * 2) + "px"; cv.style.height = (h + PAD * 2) + "px";
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = Math.round((w + PAD * 2) * dpr); cv.height = Math.round((h + PAD * 2) * dpr);
+    if (k === key) return true;
+    key = k; W = Math.round((w + PAD * 2) * R); H = Math.round((h + PAD * 2) * R);
+    small.width = W; small.height = H;
+    // 剪影往外擴：把人物圖在一圈位置上各畫一次，聯集起來就是擴大的剪影
+    sc.clearRect(0, 0, W, H);
+    const g = GROW * R;
+    for (let i = 0; i <= 24; i++) {
+      const ang = i / 24 * Math.PI * 2, rr = i === 24 ? 0 : g;
+      sc.drawImage(img, PAD * R + Math.cos(ang) * rr, PAD * R + Math.sin(ang) * rr, w * R, h * R);
+    }
+    const d = sc.getImageData(0, 0, W, H).data;
+    A = new Uint8ClampedArray(W * H); for (let i = 0; i < W * H; i++) A[i] = d[i * 4 + 3];
+    out = sc.createImageData(W, H);
+    for (let i = 0; i < W * H; i++) { out.data[i * 4] = 155; out.data[i * 4 + 1] = 77; out.data[i * 4 + 2] = 255; }
+    return true;
+  }
+  const nz = (u, v, c) => {       // 雙線性取樣（u、v 是雜訊格座標，會自動繞回去）
+    u = ((u % N) + N) % N; v = ((v % N) + N) % N;
+    const x0 = u | 0, y0 = v | 0, x1 = (x0 + 1) % N, y1 = (y0 + 1) % N, fx = u - x0, fy = v - y0;
+    const a = NOISE[(y0 * N + x0) * 2 + c], b = NOISE[(y0 * N + x1) * 2 + c], p = NOISE[(y1 * N + x0) * 2 + c], q = NOISE[(y1 * N + x1) * 2 + c];
+    return (a + (b - a) * fx) * (1 - fy) + (p + (q - p) * fx) * fy;
+  };
+  function draw(t) {
+    const k = NS / R;                                // 1 個計算像素＝幾格雜訊
+    const scroll = t / 1000 * SPEED * NS, warp = WARP * R, o = out.data;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const u = x * k, v = y * k + scroll;
+      const sx = Math.round(x + nz(u, v, 0) * warp), sy = Math.round(y + nz(u, v, 1) * warp);
+      o[(y * W + x) * 4 + 3] = sx >= 0 && sy >= 0 && sx < W && sy < H ? A[sy * W + sx] : 0;
+    }
+    sc.putImageData(out, 0, 0);
+    const dpr = cv.width / (W / R);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.filter = `blur(${7 * dpr}px)`; ctx.globalAlpha = .8;             // 外層：亮紫、比較散
+    ctx.drawImage(small, 0, 0, cv.width, cv.height);
+    ctx.filter = `blur(${1.5 * dpr}px) brightness(.45)`; ctx.globalAlpha = .6;   // 內層：深紫、貼著身體
+    ctx.drawImage(small, 0, 0, cv.width, cv.height);
+    ctx.filter = "none"; ctx.globalAlpha = 1;
+  }
+  let last = 0;
+  function loop(t) {
+    raf = 0;
+    if ($("lobby").hidden || getComputedStyle(cv.parentElement).display === "none") return;
+    if (!noiseReady || (!A && !setup())) { raf = requestAnimationFrame(loop); return; }
+    if (t - last > 33) { last = t; draw(t); }        // 每秒 30 格就夠
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) raf = requestAnimationFrame(loop);
+  }
+  const start = () => { if (setup() && !raf) raf = requestAnimationFrame(loop); };
+  img.addEventListener("load", start); addEventListener("resize", () => { key = ""; A = null; start(); });
+  new MutationObserver(start).observe($("lobby"), { attributes: true, attributeFilter: ["hidden"] });
+  start();
+  return { start, draw };
+})();
+$("resAll").onclick = showLeaderboard;
+$("lbAll").onclick = async () => { DSFX.decide(); leaderboard = await leaderboardService.getLeaderboard(); renderLobbyBoard(); $("rankModal").hidden = false; $("rankModal").querySelector(".lobby-rank-modal").focus(); };
+
+// 人物圖（GALGAME 立繪）：主角、同學是原本的插畫；神秘同學、進夢境後的主角是像素畫（檔名有 _px）
+const VN = {
+  heroSleepy: "dream/vn/hero_sleepy.webp", heroClosed: "dream/vn/hero_closed.webp", heroOpen: "dream/vn/hero_open.webp",
+  heroSurprised: "dream/vn/hero_surprised.webp", heroSurprisedPx: "dream/vn/hero_surprised_px.webp?v=3", heroLaugh: "dream/vn/hero_laugh.webp",
+  mysteryPx: "dream/vn/mate_px.webp", mateWave: "dream/vn/mate_wave.webp", mateThink: "dream/vn/mate_think.webp",
+};
+// 前導故事（劇本「▼前導故事」）
+const PROLOGUE = [
+  { who: "主角", hero: VN.heroSleepy, stand: null, text: "今天天氣真暖" },                                  // 快睡著
+  { who: "主角", hero: VN.heroClosed, text: "好想睡覺……" },                                                // 眼睛閉起來
+  { who: "神秘同學", stand: VN.mysteryPx, text: "怎麼會有人類在這裡，嗯嗯……你看起來有很會客語呢。" },
+  { who: "主角", hero: VN.heroOpen, text: "你是誰？" },                                                     // 眼睛睜開
+  { who: "神秘同學", text: "如何破除這夢境，就要看看你的能力了。" },
+  { who: "神秘同學", text: "這裡有七層夢境，依照情境回答正確句子吧！小心不要說錯話，被殭屍們發現。" },
+  { who: "神秘同學", text: "破一層夢境就可以得到一張符紙。加油吧！" },
+  { who: "主角", hero: VN.heroSurprised, text: "欸！",                                                      // 驚訝 → 閃一閃變像素畫
+    fx: () => setTimeout(() => flickerTo($("vnHero"), VN.heroSurprisedPx), 500) },
+];
+function start() {
+  Object.assign(st, { qs: buildRound(), i: 0, score: 0, fu: 0, log: [], scene: null, elapsed: 0 });
+  timer.reset(); timer.resume();
+  $("game").querySelector(".dg-ui").hidden = false;
+  $("dgFuN").textContent = "0";
+  show("game");
+  renderQ();
+}
+// 前導故事畫面：點一下換下一句，講完（或按「跳過故事情境」）到說明頁
+async function playIntro() {
+  $("introBack").hidden = false;
+  show("intro");
+  await story(PROLOGUE, { skip: true });
+  if (!$("intro").hidden) show("lobby");
+}
+$("introBack").onclick = () => { if (skipStory) skipStory(); };
+document.querySelector("#lobby .lobby-back-button").onclick = playIntro;
+playIntro();
+function renderQ() {
+  const { item, opts } = st.qs[st.i], sc = sceneOf(item.topic);
+  if (st.i > 0) { $("dgStage").classList.remove("dream"); void $("dgStage").offsetWidth; $("dgStage").classList.add("dream"); }
+  setTimeout(() => { st.scene = sc; $("dgSoft").style.backgroundImage = `url(${BG[sc].soft || BG[sc].img.src})`; }, st.i === 0 ? 0 : 360);
+  $("dgSign").textContent = `夢境・${SCENES[sc].name}・第 ${st.i + 1} / ${ROUND} 題`;
+  $("dgPrompt").innerHTML = `<span class="dim">${item.ctx.length ? "（先聽前一句對話，再聽同學問你……）" : "（同學好像有話要跟你說……）"}</span>`;
+  $("dgCue").hidden = true;
+  $("dgNext").hidden = true;
+  av.setExpression("neutral"); av.play("idle");
+  const pinyin = false;   // 選項不顯示拼音
+  $("dgOpts").innerHTML = "";
+  opts.forEach((o, n) => {
+    const b = document.createElement("div");
+    b.className = "dg-opt"; b.tabIndex = 0; b.setAttribute("role", "button");
+    b.innerHTML = `<span class="k">${"ABC"[n]}</span><span class="b"><div class="mark">${IC(o.right ? "check" : "close")}<span>${o.right ? "正確答案" : "你的選擇"}</span></div><div class="h">${esc(o.h)}</div>${pinyin ? `<div class="p">${esc(o.p)}</div>` : ""}<div class="m">${esc(o.m)}</div></span><button class="say1" type="button" aria-label="聽這句">${IC("volume-3")}</button>`;
+    b.onclick = () => answer(n);
+    b.onmouseenter = b.onfocus = () => { if (!st.qs[st.i].done) DSFX.cursor(); };
+    b.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); answer(n); } };
+    b.querySelector(".say1").onclick = e => { e.stopPropagation(); sayLines([o], false); };
+    o.el = b; $("dgOpts").appendChild(b);
+  });
+  const lines = [...item.ctx, item.q];
+  buildQBar(lines);
+  $("dgReplay").onclick = () => sayLines(lines, true);
+  setTimeout(() => sayLines(lines, true), st.i === 0 ? 400 : 900);
+}
+function dropPaper() {
+  const sr = sceneCv.getBoundingClientRect(), fb = $("dgFu").getBoundingClientRect();
+  const p = document.createElement("img"); p.className = "dg-paper"; p.src = "ui/talisman_gold.svg"; p.alt = ""; DSFX.paper();
+  // 從同學胸口冒出來 → 往上彈 → 飛到右上角的符紙數
+  const bg = BG[st.scene];
+  const x0 = sr.left + sr.width * bg.footX / bg.w - 14, y0 = sr.top + sr.height * (bg.footY - bg.charH * .6) / bg.h;
+  p.style.left = x0 + "px"; p.style.top = y0 + "px";
+  $("game").appendChild(p);
+  p.animate([
+    { transform: "translate(0,0) scale(.3) rotate(0deg)", opacity: 0 },
+    { transform: "translate(0,-46px) scale(1.25) rotate(-8deg)", opacity: 1, offset: .3 },
+    { transform: "translate(0,-38px) scale(1.1) rotate(6deg)", opacity: 1, offset: .5 },
+    { transform: `translate(${fb.left - x0}px,${fb.top - y0}px) scale(.5) rotate(0deg)`, opacity: .3 },
+  ], { duration: 1500, easing: "ease-in-out" }).onfinish = () => {
+    p.remove(); $("dgFuN").textContent = ++st.fu; DSFX.collect();
+    $("dgFu").classList.add("bump"); setTimeout(() => $("dgFu").classList.remove("bump"), 300);
+  };
+}
+function answer(n) {
+  const cur = st.qs[st.i]; if (cur.done) return; cur.done = true;
+  const chosen = cur.opts[n], right = chosen.right;
+  if (right) st.score += 10;
+  st.log.push({ item: cur.item, chosen, right, scene: sceneOf(cur.item.topic) });
+  cur.opts.forEach(o => { o.el.classList.add("done"); if (o.right) o.el.classList.add("ok"); else if (o === chosen) o.el.classList.add("bad"); });
+  const it = cur.item;
+  // 遊戲中不顯示題目文字與華語意思（最後成績頁才顯示），只用旁白描述同學的反應
+  $("dgPrompt").innerHTML = `<span class="dim">${right ? "（同學笑著點點頭。）" : "（同學歪著頭，好像聽不太懂……）"}</span>`;
+  $("dgCue").hidden = false;
+  // 選項上方不放對錯提示：對錯看選項的綠／紅框、符紙、音效和同學的反應
+  if (right) { DSFX.correct(); av.setExpression("smile"); av.play("mb_wave"); glowT0 = performance.now(); setTimeout(dropPaper, 450); }
+  else { DSFX.wrong(); DSFX.shake($("dgStage"), 1); DSFX.shake($("dgMsg"), .6); av.setExpression("troubled"); av.play("think"); }
+  // 選完不唸答案（答案句子到最後的成績頁才能聽）
+  $("dgNext").innerHTML = (st.i + 1 < ROUND ? "下一題" : "看結果") + IC("chevron-right");
+  $("dgNext").hidden = false;
+}
+$("dgNext").onclick = () => { DSFX.page(); speakId++; audio.pause(); st.i++; if (st.i < ROUND) { DSFX.dream(); renderQ(); } else finish(); };
+
+// ---- 結算 ----
+// 成績結算（劇本「▼成績結算」）：依排行榜名次的百分比給星等、稱號、評語
+// 5 星：排名第 1 且滿分 100 分；4 星：前 20%；3 星：前 21%～50%；2 星：前 51%～80%；1 星：後 20%
+const RESULT_TIERS = {
+  5: { title: "夢境驅魔大師", comment: "七層夢境一層都沒漏，連殭屍王都乖乖搬走！你的耳朵和聲調都是全場最強。" },
+  4: { title: "金符驅魔師", comment: "聽得懂、畫得準，大部分的殭屍都被你一張符就搞定，再多練一點就是大師了！" },
+  3: { title: "見習驅魔師", comment: "夢境的對話難不倒你！把聲調畫得再準一點，符紙會更有力。" },
+  2: { title: "符紙小學徒", comment: "多聽幾次同學說的話，畫聲調時跟著唸唸看，下次一定更順手。" },
+  1: { title: "迷路的夢遊者", comment: "這次在夢裡繞了好一陣子，別灰心，再睡一覺、再闖一次吧！" },
+};
+function starOf(rank, people, total) {
+  if (!rank || !people) return 1;
+  if (rank === 1 && Math.round(total * 100) >= 10000) return 5;
+  const p = rank / people;
+  return p <= .2 ? 4 : p <= .5 ? 3 : p <= .8 ? 2 : 1;
+}
+function renderResult(played) {
+  const lb = leaderboard, me = lb?.myEntry;
+  const total = st.score + (st.score2 || 0);
+  const stars = starOf(me?.rank, lb?.participantCount, me ? me.score : total), tier = RESULT_TIERS[stars];
+  $("resComment").textContent = tier.comment;
+  $("resDialect").textContent = st.dialect; $("resTitle").textContent = tier.title;
+  $("resStars").innerHTML = [1, 2, 3, 4, 5].map(n => `<span class="${n <= stars ? "on" : ""}">★</span>`).join("");
+  $("resStars").setAttribute("aria-label", `${stars} 星`);
+  $("resRank").textContent = me ? `第${me.rank}名` : "--";
+  $("resTime").textContent = formatTime(st.elapsed); $("resScore").textContent = `${(st.score + (st.score2 || 0)).toFixed(2)}分`;
+  const row = (e, cls) => `<li class="${cls}"><span class="result-rank-place" tabindex="0" aria-label="第 ${e.rank} 名，${esc(e.displayName)}，計時 ${formatRankTime(e.elapsedMs)}，分數 ${e.score}">${medal(e.rank)}</span><span>${esc(e.displayName)}</span><span>${Number.isInteger(e.score) ? e.score : e.score.toFixed(2)}</span><time>${formatRankTime(e.elapsedMs)}</time></li>`;
+  let html = lb.entries.map(e => row(e, e.mine ? "mine" : "")).join("");
+  if (me && me.rank > 10) html += `<li class="result-rank-ellipsis" aria-hidden="true"><span>·</span><span>·</span><span>·</span></li>` + row(me, "mine out-of-top-ten");
+  $("resRankList").innerHTML = html;
+  $("resPeople").textContent = lb.participantCount; $("resPlays").textContent = lb.playCount;
+  const say = (src, label) => src ? `<button class="rv-say" type="button" data-s="${esc(src)}" aria-label="聽${label}">${IC("volume-3")}</button>` : "";
+  $("resReview").innerHTML = st.log.map((l, i) => `
+    <article class="sentence-review-item ${l.right ? "passed" : "failed"}" tabindex="0" role="group">
+      <header><h3>第${i + 1}題</h3><div class="sentence-review-badges"><span>得分：${l.right ? 10 : 0} 分</span><em>${l.right ? IC("check") + " 已通關" : IC("close") + " 未通關"}</em></div></header>
+      <div class="sentence-review-layout">
+        <div class="sentence-review-detail">
+          <section class="sentence-question-block" aria-label="題目"><h4>${esc(l.item.topic)}</h4><p class="sentence-question-badge" style="font-family:var(--hakka-font)">${say(l.item.q.s, "題目")}${esc(l.item.q.h)}</p><p class="sentence-question-description">${esc(l.item.q.m)}</p></section>
+          <section class="sentence-hint ${l.right ? "success" : ""}" aria-label="答題結果"><b>${l.right ? "答對了！" : "正確的回答是："}</b><p style="font-family:var(--hakka-font)">${say(l.item.a.s, "正確的回答")}${esc(l.item.a.h)}（${esc(l.item.a.m)}）</p>${l.right ? "" : `<div class="sentence-context-mistakes"><small>你選的：</small><p style="font-family:var(--hakka-font)">${say(l.chosen.s, "你選的回答")}${esc(l.chosen.h)}</p></div>`}</section>
+        </div>
+      </div>
+    </article>`).join("") + (S2.log || []).map((r, i) => `
+    <article class="sentence-review-item ${r.failed ? "failed" : "passed"}" tabindex="0" role="group">
+      <header><h3>第二關・第${i + 1}波</h3><div class="sentence-review-badges"><span>${r.failed ? "沒在時間內封印：0 分" : `平均：${(r.seals.reduce((a, b) => a + b, 0) / r.seals.length * 100).toFixed(2)}%`}</span><em>${r.failed ? IC("close") + " 未封印" : IC("check") + " 已封印"}</em></div></header>
+      <div class="sentence-review-layout">
+        <div class="sentence-review-detail">
+          <section class="sentence-question-block" aria-label="詞"><h4>${say(r.w.s, "這個詞")}${esc(r.w.h.join(""))}</h4><p class="sentence-question-badge" style="font-family:var(--hakka-font)">${esc(r.w.p.join(" "))}</p><p class="sentence-question-description">${esc(r.w.m || "")}</p></section>
+          <section class="sentence-hint ${r.failed ? "" : "success"}" aria-label="每個字的精準度"><b>每個字的聲調（本調）</b><p>${r.w.h.map((ch, k) => { const sp = TONE.spoken(st.dialect, r.w, k); return `${esc(ch)} ${esc(r.w.p[k])}：本調 ${sp.base}${sp.changed ? `（整詞唸 ${sp.val}）` : ""}　${(r.seals[k] * 100).toFixed(1)}%`; }).join("<br>")}</p></section>
+        </div>
+      </div>
+    </article>`).join("") || `<p class="rank-foot">還沒有作答紀錄。</p>`;
+}
+// 成績頁：題目、答案、詞旁邊的喇叭按鈕
+$("resReview").addEventListener("click", e => {
+  const b = e.target.closest(".rv-say"); if (!b) return;
+  speakId++; audio.pause(); audio.src = b.dataset.s; audio.muted = !st.sound; audio.play().catch(() => {});
+  document.querySelectorAll(".rv-say.on").forEach(x => x.classList.remove("on")); b.classList.add("on");
+  audio.onended = () => b.classList.remove("on");
+});
+async function finish() {
+  timer.pause(); speakId++; audio.pause();
+  $("game").querySelector(".dg-ui").hidden = true;
+  av.setExpression("surprised"); av.play("nod_surprise");
+  // 符紙發光 → 夢境裂開 → 被吸走
+  $("dgFu").animate([{ boxShadow: "0 0 0 #ffd66a" }, { boxShadow: "0 0 26px 10px #ffd66a" }, { boxShadow: "0 0 0 #ffd66a" }], { duration: 900, iterations: 3 });
+  let crack = null;
+  await story([
+    { who: "神秘同學", text: "拿好我交給你的符紙，準備開始嘍！", fx: () => DSFX.paper() },
+    { who: "", text: "（四周的教室開始一塊一塊地裂開……）", fx: () => { crack = crackFx(); } },
+    { who: "？？？", text: "是誰，擾我清夢！", fx: () => { DSFX.vortex(); const v = document.createElement("div"); v.className = "dg-vortex"; document.body.appendChild(v); setTimeout(() => v.remove(), 1500); } },
+  ]);
+  await swirlAway(crack);
+  if (crack) crack.remove();
+  show("stage2");
+  await S2.start(ending);
+}
+// 被吸進漩渦：場景（含背景、裂痕）一起旋轉、縮小、變模糊，最後白光接到第二關
+async function swirlAway(crack) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) { DSFX.flash("#ffffff", 500); return; }
+  DSFX.vortex();
+  // 漩渦只當半透明的一層，看得到後面的場景在轉
+  const v = document.createElement("div"); v.className = "dg-vortex"; v.style.animation = "none"; document.body.appendChild(v);
+  v.animate([{ opacity: 0, transform: "rotate(0) scale(1.4)" }, { opacity: .45, offset: .4 }, { opacity: .55, transform: "rotate(540deg) scale(.6)" }], { duration: 1300, easing: "ease-in", fill: "forwards" });
+  const kf = [{ rotate: "0deg", scale: "1", filter: "blur(0px)" }, { rotate: "200deg", scale: ".7", filter: "blur(2px)", offset: .5 }, { rotate: "720deg", scale: ".04", filter: "blur(8px)" }];
+  const opt = { duration: 1300, easing: "cubic-bezier(.5,0,.9,.6)" };
+  const anims = [$("dgStage"), $("dgSoft"), crack].filter(Boolean).map(el => el.animate(kf, opt));
+  setTimeout(() => DSFX.flash("#ffffff", 600), 1050);
+  await Promise.all(anims.map(a => a.finished));
+  v.remove();
+}
+// 第二關結束：殭屍王被封印 → 夢境補起來 → 醒來（同學叫你起床）→ 總成績與排行榜
+async function ending() {
+  timer.pause();
+  await story([
+    { who: "貪睡殭屍王", text: "哎喲……好啦我錯了，我去別處找地方睡……", fx: () => DSFX.cancel() },
+    { who: "", text: "（符紙發出金光，把裂開的夢一片一片補了回去。）", fx: () => { DSFX.fanfare(); DSFX.flash("#fff2b0", 700); } },
+  ]);
+  // 醒來：脫離夢境，回到原本（非像素）的教室，主角和同學都是原本的插畫
+  DSFX.flash("#ffffff", 900); DSFX.wake();
+  $("introBack").hidden = true;
+  show("intro");
+  await story([
+    { who: "同學", stand: VN.mateWave, text: "欸，起床了啦！鐘都響了。" },
+    { who: "同學", stand: VN.mateThink, text: "你剛剛睡覺手一直在空中比來比去欸，在幹嘛？" },
+    { who: "主角", hero: VN.heroLaugh, text: "我去驅魔了。" },   // 動作：看著手上的符紙，大笑（hero_laugh 圖）
+  ]);
+  st.score2 = S2.score();
+  st.elapsed = timer.get();
+  const total = Math.round((st.score + st.score2) * 100) / 100;
+  leaderboard = await leaderboardService.submitGameResult({ score: total, elapsedMs: st.elapsed });
+  renderResult(true); show("result"); DSFX.fanfare();
+}
+$("resReplay").onclick = start;
+$("startBtn").onclick = start;
+// 系統音效：一般按鈕＝決定、返回與關閉＝取消（選項卡、下一題另外處理）
+document.addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.closest(".dg-opt") || b.id === "dgNext") return; (/Back|Home|Close|rankClose/.test(b.id) || b.classList.contains("lobby-back-button") ? DSFX.cancel : DSFX.decide)(); }, true);
+
+// ---- 載入向量同學 ----
+(async () => {
+  leaderboard = await leaderboardService.getLeaderboard(); renderLobbyBoard();
+  av = await VectorAvatar.Avatar.create($("dgSrc"), { vectorUrl: "dream/classmate.json", width: 560, height: 600, idle: "idle" });
+  const r = av.renderer;
+  if (r && r.opt && r.drawAll && r.g) {
+    r.opt.bg = "rgba(0,0,0,0)";
+    if (r.opt.outline) r.opt.outline.enabled = false;
+    const draw = r.drawAll.bind(r);
+    r.drawAll = e => { r.g.setTransform(1, 0, 0, 1, 0, 0); r.g.clearRect(0, 0, r.W, r.H); draw(e); };
+  }
+  requestAnimationFrame(frame);
+  $("startBtn").disabled = false; $("startBtn").textContent = "進入夢境";
+})();
+</script>
+<script src="dream/stage2.js?v=20261125n"></script>
+</body>
+</html>

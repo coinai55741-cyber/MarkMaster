@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>符咒打殭屍｜試玩</title>
+<link rel="stylesheet" href="fw_common.css">
+<style>
+  #sky { background: url(zombie/bg_night.png) center / cover no-repeat, radial-gradient(ellipse at 50% 120%, #3a2a5a 0, transparent 55%), linear-gradient(#0d1630, #22184a); }
+  .wave { margin-top: 10px; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; }
+  .wave small { font-size: 14px; color: var(--muted); font-weight: 400; }
+  .tip { white-space: pre-line; margin-top: 2px; min-height: 1.3em; font-size: 15px; color: var(--gold); max-width: 560px; text-align: center; text-shadow: 0 1px 3px #000; }
+  .msg { text-shadow: 0 1px 3px #000; }
+  .spacer { flex: 1; }
+  .dock { display: flex; align-items: flex-end; gap: 12px; }
+  .padwrap { position: relative; }
+  #pad { display: block; width: min(280px, 80vw); height: 220px; border-radius: 16px; background: rgba(20,28,64,.85); border: 1px solid var(--tile-line); touch-action: none; cursor: crosshair; }
+  .padlabel { position: absolute; left: 8px; top: 6px; font-size: 12px; color: var(--muted); pointer-events: none; }
+  #lion { width: 130px; height: 140px; pointer-events: none; }
+  #lion canvas { display: block; width: 100% !important; height: 100% !important; }
+  @media (max-width: 560px) { #lion { display: none; } }
+  body.shake .ui { animation: shake .35s; }
+  @keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+  .rows small { color: var(--muted); }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<div class="ui" id="ui" hidden>
+  <div class="hud"><span>第 <b id="wno">1</b> / <b id="wn">3</b> 波</span><span class="grow"></span><span>聲調 <b id="sc">0.00</b> / 30</span></div>
+  <div class="wave"><span id="word"></span><small id="meaning"></small><button class="btn ghost" id="listen">🔊</button></div>
+  <div class="msg" id="msg"></div>
+  <div class="tip" id="tip"></div>
+  <div class="spacer"></div>
+  <div class="dock">
+    <div id="lion"></div>
+    <div class="padwrap">
+      <canvas id="pad"></canvas>
+      <div class="padlabel">高 5 ─ 低 1　由左往右畫</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="startPanel">
+  <div class="card">
+    <h1 id="startTitle">符咒打殭屍</h1>
+    <p>殭屍額頭的符上寫著一個字。照那個字的<b>本調</b>，在下面的框裡由左往右畫一筆，就能把它封印！<br>方向對就打得中，高低畫得越準分數越高。殭屍跳到防線，那個字就是 0 分。共 3 波、30 分。</p>
+    <div id="pickers">
+      <div class="chips" id="dialects"></div>
+      <div class="chips" id="levels"></div>
+    </div>
+    <button class="btn" id="startBtn">開始</button>
+    <div class="note">拼音依《中小學沉浸式客語課室用語手冊》，只標本調；調值依教育部《客家語拼音方案使用手冊》聲調符號表（五度標記，1 最低、5 最高）。給分照本調；變調只做註記。</div>
+  </div>
+</div>
+<div class="panel" id="endPanel" hidden>
+  <div class="card">
+    <h1>封印完成</h1>
+    <div class="big" id="endScore">0.00</div><p style="margin:0">／ 30 分</p>
+    <div class="rows" id="endRows"></div>
+    <button class="btn" id="againBtn">再玩一次</button>
+  </div>
+</div>
+<audio id="voice"></audio>
+<script src="fireworks_data.js"></script>
+<script src="fw_sfx.js"></script>
+<script src="fw_engine.js"></script>
+<script src="tone.js"></script>
+<script src="avatar/vector-avatar.js"></script>
+<script src="avatar/shisa.js"></script>
+<script>
+FW.init(document.getElementById("sky"));
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const EMBED = Q.has("embedded");
+const LEVELS = {
+  easy: { name: "初級", walk: 18, gap: 2.4 },   // walk：從出現到防線幾秒；gap：同一波殭屍間隔幾秒
+  mid:  { name: "中級", walk: 14, gap: 2.0 },
+  hard: { name: "進階", walk: 10, gap: 1.6 },
+};
+const TOTAL = 30, PLAN = [2, 3, 4];
+const st = { dialect: Q.get("dialect") || "四縣腔", level: LEVELS[Q.get("level")] ? Q.get("level") : "easy",
+  words: [], wi: 0, zs: [], log: [], clock: 0, running: false, total: 0 };
+
+// ---- 圖片（有 zombie/jiangshi.png 就用，沒有就用程式畫的殭屍）----
+const sprite = new Image(); let spriteOk = false;
+sprite.onload = () => spriteOk = true; sprite.src = "zombie/jiangshi.png";
+
+// ---- 獅狗守門 ----
+let lion = null;
+async function initLion() {
+  if (lion || !window.VectorAvatar || !window.SHISA_VECTOR || getComputedStyle($("lion")).display === "none") return;
+  try {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(SHISA_VECTOR)], { type: "application/json" }));
+    lion = await VectorAvatar.Avatar.create($("lion"), { vectorUrl: url, width: 560, height: 600, idle: "idle" });
+    // 角色引擎預設會塗淺藍底；改成每格先清空再畫，讓獅狗站在夜景上
+    const r = lion.renderer;
+    if (r && r.opt && r.drawAll && r.g) {
+      r.opt.bg = "rgba(0,0,0,0)";
+      const draw = r.drawAll.bind(r);
+      r.drawAll = e => { r.g.setTransform(1, 0, 0, 1, 0, 0); r.g.clearRect(0, 0, r.W, r.H); draw(e); };
+    }
+  } catch (e) { console.error("角色載入失敗", e); lion = null; $("lion").innerHTML = ""; }
+}
+const lionDo = (expr, motion) => { if (lion) { lion.setExpression(expr); if (motion) lion.play(motion); } };
+
+// ---- 畫板（跟畫聲調升空同一個框）----
+const pad = $("pad"), pc = pad.getContext("2d");
+let PW = 0, PH = 0, stroke = [], drawing = false, showTarget = null;
+function sizePad() { const r = pad.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); PW = r.width; PH = r.height; pad.width = PW * d; pad.height = PH * d; pc.setTransform(d, 0, 0, d, 0, 0); drawPad(); }
+addEventListener("resize", sizePad);
+const yOf = lvl => PH - 18 - (lvl - 1) / 4 * (PH - 36);   // 音高 1~5 -> 畫板 y
+const lvlOf = y => 1 + (PH - 18 - y) / (PH - 36) * 4;
+function drawPad() {
+  pc.clearRect(0, 0, PW, PH);
+  for (let l = 1; l <= 5; l++) { pc.strokeStyle = "rgba(170,179,214,.18)"; pc.lineWidth = 1; pc.beginPath(); pc.moveTo(28, yOf(l)); pc.lineTo(PW - 10, yOf(l)); pc.stroke(); pc.fillStyle = "rgba(170,179,214,.6)"; pc.font = "11px sans-serif"; pc.fillText(l, 12, yOf(l) + 4); }
+  if (showTarget) { pc.strokeStyle = "rgba(111,227,161,.85)"; pc.lineWidth = 5; pc.setLineDash([8, 6]); pc.beginPath(); showTarget.forEach((lv, k) => { const x = 40 + (PW - 64) * k / (showTarget.length - 1); k ? pc.lineTo(x, yOf(lv)) : pc.moveTo(x, yOf(lv)); }); pc.stroke(); pc.setLineDash([]); }
+  if (stroke.length) { pc.strokeStyle = "#ffd36b"; pc.lineWidth = 4; pc.lineCap = "round"; pc.beginPath(); stroke.forEach(([x, y], i) => i ? pc.lineTo(x, y) : pc.moveTo(x, y)); pc.stroke(); }
+}
+const local = e => { const r = pad.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+pad.addEventListener("pointerdown", e => { if (!st.running || FWX.paused) return; pad.setPointerCapture(e.pointerId); drawing = true; showTarget = null; stroke = [local(e)]; SFX.hum.start(lvlOf(stroke[0][1])); drawPad(); });
+pad.addEventListener("pointermove", e => { if (!drawing) return; stroke.push(local(e)); SFX.hum.set(lvlOf(stroke.at(-1)[1])); drawPad(); });
+pad.addEventListener("pointerup", () => { if (!drawing) return; drawing = false; SFX.hum.stop(); cast(); });
+pad.addEventListener("pointercancel", () => { drawing = false; SFX.hum.stop(); });
+
+// ---- 場地：殭屍從遠處（上）跳到防線（畫板上緣）----
+const field = () => { const top = Math.max(150, $("tip").getBoundingClientRect().bottom + 70), line = $("pad").getBoundingClientRect().top - 14; return { top, line: Math.max(top + 120, line) }; };
+function zPos(z) {
+  const { top, line } = field(), p = Math.min(1, z.p), s = .7 + .4 * p;
+  const x = FW.W / 2 + z.lane * Math.min(150, FW.W / (z.n + 1)) * (.55 + .45 * p);
+  const hop = z.state === "walk" ? Math.abs(Math.sin(z.t * Math.PI * 1.5)) * 16 * s : 0;
+  return { x, y: top + (line - top) * p - hop, foot: top + (line - top) * p, s };
+}
+
+// ---- 畫殭屍與額頭的符 ----
+function talisman(c, x, y, s, z) {
+  const tw = Math.max(46, 56 * s), th = tw * (st.level === "hard" ? 1.35 : 1.7);
+  c.save(); c.translate(x, y); c.rotate(Math.sin(z.t * 3) * .04);
+  c.fillStyle = "#f6d55c"; c.strokeStyle = "#b8860b"; c.lineWidth = 1.5;
+  c.beginPath(); c.rect(-tw / 2, 0, tw, th); c.fill(); c.stroke();
+  c.strokeStyle = "rgba(190,30,30,.5)"; c.strokeRect(-tw / 2 + 3, 3, tw - 6, th - 6);
+  c.textAlign = "center"; c.textBaseline = "top"; c.fillStyle = "#b3121b";
+  c.font = `700 ${tw * .5}px ${getComputedStyle(document.body).fontFamily}`; c.fillText(z.ch, 0, tw * .1);
+  c.font = `600 ${tw * .22}px sans-serif`; c.fillStyle = "#6b0d12"; c.fillText(z.syl, 0, tw * .66);
+  if (st.level === "easy") {            // 初級：小調型圖示
+    const pts = z.target, bx = -tw * .32, bw = tw * .64, by = tw * .98, bh = tw * .5;
+    c.strokeStyle = "#b3121b"; c.lineWidth = 2.5; c.lineCap = "round"; c.beginPath();
+    pts.forEach((lv, k) => { const px = bx + bw * k / (pts.length - 1), py = by + bh - (lv - 1) / 4 * bh; k ? c.lineTo(px, py) : c.moveTo(px, py); }); c.stroke();
+  } else if (st.level === "mid") {      // 中級：調值數字
+    c.font = `700 ${tw * .3}px sans-serif`; c.fillStyle = "#b3121b"; c.fillText(z.val, 0, tw * 1.02);
+  }
+  c.restore();
+}
+function drawZombie(c, z) {
+  const { x, y, foot, s } = zPos(z), H = 140 * s;
+  c.save(); c.globalAlpha = z.alpha;
+  c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.ellipse(x, foot + 2, H * .28, H * .06, 0, 0, 7); c.fill();
+  let faceTop;
+  if (spriteOk) {
+    // 圖的臉從上往下約 26% 開始（帽簷下緣）；符從帽簷垂下來
+    const h = H * 1.45, w = h * sprite.width / sprite.height;
+    c.drawImage(sprite, x - w / 2, y - h, w, h);
+    faceTop = y - h * .76;
+  } else {
+    const r = H * .17, hy = y - H * .76;
+    c.lineWidth = 2; c.strokeStyle = "#141a2e";
+    // 袖子（雙手往前伸）
+    c.fillStyle = "#24566e";
+    for (const d of [-1, 1]) { c.beginPath(); c.roundRect(x + d * H * .14 - (d < 0 ? H * .26 : 0), y - H * .55, H * .26, H * .12, H * .05); c.fill(); c.stroke();
+      c.fillStyle = "#b9e4c9"; c.beginPath(); c.arc(x + d * H * .42, y - H * .49, H * .055, 0, 7); c.fill(); c.stroke(); c.fillStyle = "#24566e"; }
+    // 官服
+    c.fillStyle = "#2f6f8a"; c.beginPath(); c.moveTo(x - H * .2, y - H * .6); c.lineTo(x + H * .2, y - H * .6); c.lineTo(x + H * .26, y - H * .04); c.lineTo(x - H * .26, y - H * .04); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = "#e8c15a"; c.fillRect(x - H * .1, y - H * .42, H * .2, H * .18); c.fillRect(x - H * .26, y - H * .1, H * .52, H * .05);
+    c.fillStyle = "#141a2e"; c.fillRect(x - H * .18, y - H * .04, H * .14, H * .05); c.fillRect(x + H * .04, y - H * .04, H * .14, H * .05);
+    // 臉
+    c.fillStyle = "#b9e4c9"; c.beginPath(); c.arc(x, hy, r, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = "rgba(255,140,160,.6)"; c.beginPath(); c.arc(x - r * .55, hy + r * .45, r * .16, 0, 7); c.arc(x + r * .55, hy + r * .45, r * .16, 0, 7); c.fill();
+    c.strokeStyle = "#141a2e"; c.beginPath(); c.arc(x, hy + r * .55, r * .18, .2, Math.PI - .2); c.stroke();
+    // 官帽
+    c.fillStyle = "#1d2133"; c.beginPath(); c.ellipse(x, hy - r * .55, r * 1.25, r * .28, 0, 0, 7); c.fill();
+    c.beginPath(); c.arc(x, hy - r * .6, r * .85, Math.PI, 0); c.fill();
+    c.fillStyle = "#d33"; c.beginPath(); c.arc(x, hy - r * 1.5, r * .18, 0, 7); c.fill();
+    faceTop = hy - r * .5;
+  }
+  talisman(c, x, faceTop, s, z);
+  c.restore();
+}
+
+// ---- 每格更新 ----
+FW.onFrame((c, t, dt) => {
+  if (!st.running) return;
+  st.clock += dt;
+  const lv = LEVELS[st.level];
+  for (const z of st.zs) {
+    if (z.state === "wait" && st.clock >= z.at) { z.state = "walk"; SFX.pop(); }
+    if (z.state === "wait") continue;
+    z.t += dt;
+    if (z.state === "walk") { z.p += dt / lv.walk; if (z.p >= 1) breach(z); }
+    if (z.state === "dead" || z.state === "gone") { z.alpha = Math.max(0, z.alpha - dt * 1.8); }
+    if (z.alpha > 0) drawZombie(c, z);
+  }
+  if (st.zs.length && st.zs.every(z => z.state === "dead" || z.state === "gone") && !st.waveDone) {
+    st.waveDone = true; setTimeout(nextWave, 1300);
+  }
+});
+
+// ---- 出招：比對場上每隻殭屍，打最像的那隻；同調值的一起打 ----
+function cast() {
+  const pts = stroke.map(([x, y]) => [x, lvlOf(y)]);
+  const alive = st.zs.filter(z => z.state === "walk");
+  if (!alive.length) { stroke = []; drawPad(); return; }
+  const tries = alive.map(z => ({ z, g: TONE.grade(pts, z.target, { minSpan: PW * .25, scale: 4 }) }));
+  const msg = $("msg"), tip = $("tip");
+  if (tries[0].g.why) { msg.className = "msg bad"; msg.textContent = tries[0].g.why; tip.textContent = ""; SFX.buzz(); return; }
+  const ok = tries.filter(r => r.g.dirOk && r.g.s > 0).sort((a, b) => b.g.s - a.g.s || b.z.p - a.z.p);
+  const pr = pad.getBoundingClientRect(), start = [pr.left + stroke[0][0], pr.top + stroke[0][1]];
+  if (!ok.length) {
+    // 沒打中：拿最靠近防線那隻給提示
+    const front = tries.slice().sort((a, b) => b.z.p - a.z.p)[0];
+    FW.dud(start[0], start[1]); SFX.buzz(); lionDo("troubled");
+    msg.className = "msg bad"; msg.textContent = "沒打中！升降方向不對，再畫一次";
+    tip.textContent = TONE.advise(front.g, front.z.target, front.z.syl, front.z.base, front.z.sp, t => TONE.grade(pts, t, { minSpan: PW * .25, scale: 4 }));
+    return;
+  }
+  const best = ok[0], g = best.g;
+  const hits = alive.filter(z => z.base === best.z.base);   // 一筆全打：本調調值相同的一起封印
+  for (const z of hits) {
+    z.state = "hit"; z.s = g.s;
+    const { x, y } = zPos(z), xs = stroke.map(p => p[0]), x0 = Math.min(...xs), x1 = Math.max(...xs), B = 140;
+    // 光沿著你畫的線飛到殭屍額頭
+    const path = [start, ...stroke.map(([px, py]) => [x + ((px - x0) / ((x1 - x0) || 1) - .5) * B, y - 150 - (lvlOf(py) - 1) * 14]), [x, y - 90]];
+    FW.flyPath(path, { power: g.s, ring: g.s > .85, n: 90, silent: z !== best.z }, () => {
+      z.state = "dead"; SFX.ding(g.s >= .9 ? 2 : g.s >= .7 ? 1 : 0);
+      st.log.push(z); updateScore();
+    });
+  }
+  lionDo(g.s >= .7 ? "smile" : "neutral", g.s >= .7 ? "spread" : null);
+  const z = best.z, pct = (g.s * 100).toFixed(1);
+  msg.className = "msg " + (g.s >= .8 ? "good" : g.s >= .5 ? "mid" : "bad");
+  msg.textContent = `${z.ch} ${z.syl}：調值 ${z.base}（${TONE.toneName(z.target)}）　精準度 ${pct}%` + (hits.length > 1 ? `　一筆打中 ${hits.length} 隻！` : "");
+  const note = z.sp.changed ? `註：「${z.ch}」在這個詞裡會變調，唸起來是 ${z.sp.val}，所以錄音聽起來不一樣。` : "";
+  tip.textContent = [TONE.advise(g, z.target, z.syl, z.base, z.sp, t => TONE.grade(pts, t, { minSpan: PW * .25, scale: 4 })), note].filter(Boolean).join("\n");
+  showTarget = z.target; drawPad(); stroke = [];
+}
+
+// 殭屍衝過防線：這個字 0 分
+function breach(z) {
+  z.state = "gone"; z.s = 0; z.breach = true; st.log.push(z); updateScore();
+  const { x, foot } = zPos(z);
+  FW.dud(x, foot - 40); SFX.buzz(); lionDo("troubled", "think");
+  document.body.classList.remove("shake"); void document.body.offsetWidth; document.body.classList.add("shake");
+  $("msg").className = "msg bad"; $("msg").textContent = `「${z.ch}」衝過防線了！這個字 0 分`;
+  $("tip").textContent = `${z.syl} 的本調是 ${z.base}（${TONE.toneName(z.target)}）`;
+}
+
+const sum = () => st.log.reduce((a, z) => a + z.s, 0);
+const score = () => Math.round(TOTAL * 100 * sum() / st.total) / 100;
+function updateScore() { $("sc").textContent = score().toFixed(2); }
+
+// ---- 波次 ----
+function startWave() {
+  const w = st.words[st.wi], lv = LEVELS[st.level], n = w.h.length;
+  $("wno").textContent = st.wi + 1;
+  $("word").textContent = w.h.join(""); $("meaning").textContent = w.m === w.h.join("") ? "" : w.m;
+  $("msg").textContent = `第 ${st.wi + 1} 波來了！`; $("msg").className = "msg mid"; $("tip").textContent = "";
+  st.waveDone = false;
+  st.zs = w.h.map((ch, i) => {
+    const syl = w.p[i], sp = TONE.spoken(st.dialect, w, i);
+    return { wi: st.wi, i, ch, syl, sp, base: sp.base, val: sp.base, target: TONE.contourOf(sp.base), n, lane: i - (n - 1) / 2,
+      at: st.clock + 1.2 + i * lv.gap, state: "wait", p: 0, t: 0, alpha: 1, s: 0 };
+  });
+  say();
+}
+function nextWave() {
+  st.wi++;
+  if (st.wi >= st.words.length) return finish();
+  startWave();
+}
+const say = () => { const v = $("voice"); v.src = st.words[st.wi].s; v.play().catch(() => {}); };
+$("listen").onclick = say;
+
+function start() {
+  const words = FWU.pick(FW_WORDS[st.dialect], PLAN);
+  Object.assign(st, { words, wi: 0, zs: [], log: [], clock: 0, running: true, total: words.reduce((n, w) => n + w.h.length, 0) });
+  $("wn").textContent = words.length; $("sc").textContent = "0.00";
+  $("startPanel").hidden = $("endPanel").hidden = true; $("ui").hidden = false;
+  sizePad(); initLion().then(() => lionDo("neutral", "mb_wave"));
+  startWave();
+}
+function finish() {
+  st.running = false;
+  const total = score();
+  for (let k = 0; k < 5; k++) setTimeout(() => FW.launch(FW.W * (.15 + .7 * Math.random()), FW.H * (.15 + .3 * Math.random()), { n: 110, ring: true }), k * 200);
+  // 依出場順序列出每個字
+  const order = st.log.slice().sort((a, b) => a.wi - b.wi || a.i - b.i);
+  setTimeout(() => {
+    $("ui").hidden = true; $("endPanel").hidden = false; SFX.fanfare();
+    $("endScore").textContent = total.toFixed(2);
+    $("endRows").innerHTML = order.map(z => `<div><span>${z.ch}　${z.syl}　<small>${z.base}${z.sp.changed ? `（唸 ${z.sp.val}）` : ""}</small></span><b>${z.breach ? "衝過防線" : (z.s * 100).toFixed(1) + "%"}</b></div>`).join("");
+    if (EMBED) {
+      $("againBtn").textContent = "看總成績";
+      $("againBtn").onclick = () => FWU.report({ type: "zombie-complete", score: total,
+        rows: order.map(z => ({ ch: z.ch, syl: z.syl, base: z.base, s: z.s, breach: !!z.breach })) });
+    }
+  }, 1500);
+}
+
+// ---- 開始畫面 ----
+const chips = (el, items, get, set) => { el.innerHTML = ""; for (const [k, label] of items) { const b = document.createElement("button"); b.className = "chip"; b.textContent = label; b.setAttribute("aria-pressed", k === get()); b.onclick = () => { set(k); [...el.children].forEach(c => c.setAttribute("aria-pressed", c === b)); }; el.appendChild(b); } };
+if (EMBED) { $("pickers").hidden = true; $("startTitle").textContent = "第二關：符咒打殭屍"; $("startBtn").textContent = "開始第二關"; }
+else {
+  chips($("dialects"), Object.keys(FW_WORDS).map(k => [k, k]), () => st.dialect, v => st.dialect = v);
+  chips($("levels"), Object.entries(LEVELS).map(([k, v]) => [k, v.name]), () => st.level, v => st.level = v);
+}
+FWX.mount({
+  title: "符咒打殭屍 玩法",
+  steps: [
+    "每一波先播一個詞的讀音（可按 <b>🔊</b> 重聽），殭屍一字一隻跳過來。",
+    "看殭屍額頭<b>符</b>上的字和拼音，在下面的框裡<b>由左往右</b>畫一筆它的聲調。橫線 1～5 是音高，5 最高。",
+    "<b>升降方向對</b>就打得中；高低越準，精準度越高。方向錯了打不中，可以再畫。",
+    "殭屍跳到防線（框的上緣），那個字就是 0 分。",
+  ],
+  tips: ["系統會自動打<b>最像</b>的那隻，順序隨你。同一個調值的殭屍會被一筆<b>一起封印</b>。", "一律照拼音的<b>本調</b>畫；會變調的字錄音聽起來不同，是正常的。", "全部字的平均精準度 × 30 就是這關分數，算到小數點後兩位。"],
+});
+$("startBtn").onclick = FWX.firstHelp(start);
+if (!EMBED) $("againBtn").onclick = start;
+</script>
+</body>
+</html>
