@@ -1,10 +1,9 @@
-# 只上傳「聽聲應答」（含獅狗吉祥物）和「煙火小遊戲」，其他先排除
+# 只上傳工程師交接用的檔案（午休驅魔記＋它用到的題庫、音檔），其他留在本機
 /*
 !/.gitignore
 !/README.md
 !/聽聲應答規格書.md
 !/符咒打殭屍企劃書.md
-!/index.html
 !/zombie_tone.html
 !/dream1.html
 !/dream/
@@ -18,11 +17,9 @@
 !/tone.js
 !/zombie/
 !/data.js
-!/avatar/
 !/audio/
 !/build_data.py
 !/fetch_audio.py
-!/make_lipsync.py
 !/context_lines.py
 # 煙火小遊戲
 !/fw_index.html
