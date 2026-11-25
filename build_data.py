@@ -5,7 +5,7 @@ from pathlib import Path
 from context_lines import CONTEXT, dialogue_lines
 
 HERE = Path(__file__).parent
-SRC = HERE.parent / "data" / "情境應答"
+SRC = HERE / "data" / "情境應答"
 DIALECTS = ["四縣腔", "南四縣腔", "海陸腔", "大埔腔", "饒平腔", "詔安腔"]
 
 

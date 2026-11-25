@@ -4,7 +4,7 @@ fetch_audio.py、make_lipsync.py、build_data.py 都會讀這裡。"""
 import csv
 from pathlib import Path
 
-QUIZ_DIR = Path(__file__).parent.parent / "data" / "quiz"
+QUIZ_DIR = Path(__file__).parent / "data" / "quiz"
 
 # 問句序號 → 前情句序號（依播放順序）
 CONTEXT = {

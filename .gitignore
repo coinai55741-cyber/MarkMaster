@@ -15,6 +15,7 @@
 !/make_vn.py
 !/tone.js
 !/data.js
+!/data/
 !/audio/
 !/build_data.py
 !/fetch_audio.py

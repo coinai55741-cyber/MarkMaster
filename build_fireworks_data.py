@@ -9,7 +9,7 @@ from pathlib import Path
 import requests
 
 HERE = Path(__file__).parent
-QUIZ = HERE.parent / "data" / "quiz" / "客語課室用語整合版_含MP3_{}.csv"
+QUIZ = HERE / "data" / "quiz" / "客語課室用語整合版_含MP3_{}.csv"
 DIALECTS = ["四縣腔", "南四縣腔", "海陸腔", "大埔腔", "饒平腔", "詔安腔"]
 TONES = "ˊˇˋ⁺ˆ"
 SYL = re.compile(rf"[a-z]+[{TONES}]*")

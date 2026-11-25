@@ -47,6 +47,8 @@ python -m http.server 8766
 ### 產生素材用的腳本（遊戲執行時不需要）
 | 路徑 | 內容 |
 | --- | --- |
+| `data/quiz/` | 課室用語原始資料（6 腔 CSV，第一、二關題庫都從這裡來） |
+| `data/情境應答/` | 第一關問答配對腳本 `make_pairs.py` 與產生的題庫 CSV |
 | `build_data.py`、`context_lines.py`、`fetch_audio.py` | 產生第一關題庫、下載語音 |
 | `build_fireworks_data.py` | 產生第二關詞庫 |
 | `gen_ui_mock.py` | 用 Codex 生圖（背景、角色、立繪），原圖存在 `dream/gen/`（不進版本控制） |
