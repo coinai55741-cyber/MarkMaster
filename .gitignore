@@ -2,9 +2,7 @@
 /*
 !/.gitignore
 !/README.md
-!/聽聲應答規格書.md
 !/符咒打殭屍企劃書.md
-!/zombie_tone.html
 !/dream1.html
 !/dream/
 !/ui/
@@ -15,25 +13,14 @@
 !/gen_ui_mock.py
 !/make_vn.py
 !/tone.js
-!/zombie/
 !/data.js
 !/audio/
 !/build_data.py
 !/fetch_audio.py
 !/context_lines.py
-# 煙火小遊戲
-!/fw_index.html
-!/fw_tone.html
-!/fw_rhythm.html
-!/fw_aim.html
-!/fireworks.html
-!/fw_engine.js
-!/fw_sfx.js
-!/fw_common.css
 !/fireworks_data.js
 !/audio_fw/
 !/build_fireworks_data.py
-!/make_onsets.py
 __pycache__/
 # Codex 生的原圖（每張約 2.7MB），只留對齊後的 bg2_*.png
 /dream/gen/

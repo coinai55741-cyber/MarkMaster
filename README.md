@@ -1,56 +1,59 @@
-# 標記大師 MarkMaster — 聽聲應答＋符咒打殭屍（原型）
+# 午休驅魔記（MarkMaster 原型）
 
-聽一句客語課室用語，從三個客語句子中選出合適的回應。獅狗吉祥物會跟著語音對嘴，答對、答錯有不同表情。
-
-## 玩法
-- 選腔調（四縣、海陸、大埔、饒平、詔安、南四縣）、難度（初級／中級／進階）、是否顯示拼音
-- 第一關聽聲應答 7 題（70 分）→ 第二關符咒打殭屍 3 波（30 分）→ 總分結算，可檢視每題對錯與每個字的聲調精準度
-
-抽題、誘答與播放邏輯詳見 [聽聲應答規格書.md](聽聲應答規格書.md)。
-
-## 夢境第一關（新版原型）
-開啟 `dream1.html`：午休睡著後的夢，7 題聽聲應答，每題依主題換到 7 個夢境場景之一（教室、走廊、圖書館、保健室、操場、禮堂、校門口）。
-說話角色目前都由「同學」代替：同學是 vector-avator 做的向量角色，播放時即時轉成像素圖（場景裡的小人＋對話框旁的大頭像），問句會對嘴。
-答對會飄下一張符紙，答錯同學會露出疑惑的動作。結束後可直接進入第二關（`zombie_tone.html`）。
-
-| 路徑 | 內容 |
-| --- | --- |
-| `dream1.html` | 夢境第一關 |
-| `make_dream_bg.py` | 產生 7 張場景背景（`dream/bg_*.png`，120×74 像素） |
-| `dream/props/` | 場景道具（書櫃、桌子等的正面像素圖） |
-| `dream/classmate.json` | 同學的向量角色（來源：`G_project/vector-avator/public/characters/classmate/vector/vector.json`） |
-| `dream/vector-avatar.js` | vector-avator 引擎（含「肩帶壓在舉起的手臂上」的修改；`index.html` 仍用 `avatar/` 的舊版） |
+客語聽說小遊戲：午休睡著，在夢裡用客語闖關、畫聲調封印殭屍，醒來後看成績與排行榜。
+主檔是 `dream1.html`，滿分 100 分：第一關 70 分＋第二關 30 分。
 
 ## 執行
-直接用瀏覽器開啟 `index.html` 即可（本機 file:// 也能玩），不需要伺服器。
+遊戲會用 `fetch` 讀角色資料，請用本機伺服器開，不能直接用 file:// 開：
+
+```
+python -m http.server 8766
+```
+
+然後開 <http://127.0.0.1:8766/dream1.html>。
+線上版（GitHub Pages）：<https://coinai55741-cyber.github.io/MarkMaster/dream1.html>
+
+## 遊戲流程
+1. **前導故事**（GALGAME 樣式對話，可「跳過故事情境」）→ **說明頁**：選腔調（四縣、海陸、大埔、饒平、詔安、南四縣），按「進入夢境」
+2. **第一關 聽客語，選回答**：7 題、每題 10 分。同學（像素角色）說一句客語，從 3 個客語回答選一個；答對得一張符紙
+3. **轉場**：被吸進漩渦，進入夜晚校園
+4. **第二關 封印殭屍王**：先練習一個字，接著 3 波殭屍（第 3 波是殭屍王）。照拼音由左往右畫出每個字的聲調（音高線 1–5），畫對就蓋上「封」印；殭屍 15 秒內沒封印完，這個詞 0 分
+5. **醒來**：回到教室（插畫，非像素）→ **成績頁**：星等、稱號、評語、名次、排行榜、題目回顧（可重聽每句）
+
+劇本與成績星等的文字以 Google 文件「午休驅魔記 劇本」為準。
 
 ## 檔案
 | 路徑 | 內容 |
 | --- | --- |
-| `index.html` | 遊戲頁（兩關串接） |
-| `zombie_tone.html` | 第二關：符咒打殭屍（也可單獨開，選腔調和難度） |
-| `tone.js` | 聲調調值、變調、畫線評分（打殭屍和畫聲調升空共用） |
-| `zombie/` | 殭屍與夜景圖（Codex 生成；缺圖時改用程式畫的殭屍） |
-| `data.js` | 題庫與對嘴時間軸（由 `build_data.py` 產生） |
-| `audio/<腔>/` | 各腔語音 MP3（由 `fetch_audio.py` 下載） |
-| `avatar/` | 向量角色引擎與獅狗角色資料 |
-| `make_lipsync.py` | 由語音產生對嘴資料 |
+| `dream1.html` | 遊戲本體（說明頁、前導故事、第一關、結算、排行榜都在這裡） |
+| `dream/stage2.js` | 第二關：封印殭屍王（畫聲調、殭屍、殭屍王出場） |
+| `dream/sfx.js` | 合成音效（Web Audio，沒有音效檔） |
+| `dream/lobby.css` | 說明頁、排行榜、結算頁樣式（沿用「穿搭小達人」編譯後的樣式） |
+| `dream/vector-avatar.js`、`dream/classmate.json` | 同學的向量角色引擎與資料，遊戲中即時轉成像素圖 |
+| `dream/vn/` | 前導故事／醒來的立繪（主角各表情、同學、像素版） |
+| `dream/bg2_*.png` | 7 個夢境場景背景（320×180 像素格） |
+| `dream/lobby_bg.webp`、`dream/result_bg.webp` | 說明頁、成績頁背景（原圖） |
+| `dream/zombie.png`、`dream/boss.png` 等 | 第二關殭屍、殭屍王圖 |
+| `ui/` | 按鈕、獎牌、符紙等介面圖 |
+| `tone.js` | 聲調調值、變調、畫線評分 |
+| `data.js` | 第一關題庫（由 `build_data.py` 產生） |
+| `audio/<腔>/` | 第一關語音 MP3（由 `fetch_audio.py` 下載） |
+| `fireworks_data.js` | 第二關用的詞與拼音（由 `build_fireworks_data.py` 產生） |
+| `audio_fw/<腔>/` | 第二關詞語音 MP3 |
+| `符咒打殭屍企劃書.md` | 第二關企劃 |
 
-## 煙火小遊戲（最後 20 分候選）
-開啟 `fw_index.html` 選遊戲。四個遊戲都有合成音效（右下角 🔊 可靜音）和「❓ 玩法」說明。
-
-| 檔案 | 遊戲 |
+### 產生素材用的腳本（遊戲執行時不需要）
+| 路徑 | 內容 |
 | --- | --- |
-| `fw_tone.html` | 畫聲調升空：照拼音的本調畫調型；會變調的字只做註記 |
-| `fw_rhythm.html` | 跟著節拍點火：聽語音，每個音節點一次火 |
-| `fw_aim.html` | 瞄準引爆：選對拼音，在引爆線上引爆 |
-| `fireworks.html` | 煙火連線：從客字拉引信到拼音 |
+| `build_data.py`、`context_lines.py`、`fetch_audio.py` | 產生第一關題庫、下載語音 |
+| `build_fireworks_data.py` | 產生第二關詞庫 |
+| `gen_ui_mock.py` | 用 Codex 生圖（背景、角色、立繪），原圖存在 `dream/gen/`（不進版本控制） |
+| `snap_bg.py`、`make_dream_bg.py`、`gen_warm_bg.py` | 背景轉成像素格 |
+| `make_vn.py` | 立繪去背、轉像素版 |
+| `make_ui_assets.py` | 介面圖 |
 
-聲調關改版企劃（打殭屍、與聽聲應答合計 100 分）見 [符咒打殭屍企劃書.md](符咒打殭屍企劃書.md)。
-
-共用：`fw_engine.js`（煙火）、`fw_sfx.js`（音效與玩法說明）、`fw_common.css`。
-詞表 `fireworks_data.js` 與 `audio_fw/` 由 `build_fireworks_data.py` 產生，音節起點由 `make_onsets.py` 計算。
-
-拼音依《中小學沉浸式客語課室用語手冊》（只標本調）；調值依教育部《客家語拼音方案使用手冊》聲調表；變調規則依教育部《客家語拼音學習手冊》各腔「變調」課。
-
-語音與題目文字來自客家委員會課室用語資料。
+## 給接手工程師
+- **排行榜目前是假資料**：`dream1.html` 裡的 `leaderboardService`（`getLeaderboard`、`submitGameResult`），正式上線只要改這裡接後端，接法同「穿搭小達人」
+- **成績星等**：`starOf()` 依排行榜名次百分比給星等（5 星＝排名第 1 且滿分；4 星前 20%；3 星前 21–50%；2 星前 51–80%；1 星後 20%），稱號與評語在 `RESULT_TIERS`
+- **第二關時間**：`dream/stage2.js` 的 `WALK_SEC`（殭屍走到面前的秒數）
+- 手機直式、橫式、桌機都有版面；`prefers-reduced-motion` 時會關掉震動、旋轉等動畫
