@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>午休驅魔記｜第一關題目檢查</title>
+<!-- 本機檢查用：不玩遊戲，直接列出全部題目（隨機順序），用和遊戲相同的規則抽誘答，確認題目、答案、誘答合不合情境。
+     資料：data.js（window.QUIZ）；音檔：audio/<腔>/<序號>.mp3
+     抽誘答規則同 dream1.html 的 buildRound()。 -->
+<style>
+  :root { --bg:#f6f3ee; --card:#fff; --ink:#2a2530; --sub:#7a7280; --line:#e4dfd8; --ok:#1f9d55; --okbg:#e8f6ee; --near:#c27a00; --far:#5a6acf; --acc:#6b3fa0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: #2a2530; color: #fff; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  header h1 { font-size: 17px; margin: 0 8px 0 0; }
+  header label { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  header select, header button { font: inherit; font-size: 14px; padding: 4px 8px; border-radius: 6px; border: 0; }
+  header button { background: #f2c94c; color: #2a2530; font-weight: 700; cursor: pointer; }
+  header .note { font-size: 13px; opacity: .75; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  .legend { font-size: 13px; color: var(--sub); margin-bottom: 12px; }
+  .legend b { padding: 1px 6px; border-radius: 4px; color: #fff; font-weight: 500; }
+  .q { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .q-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+  .q-no { font-weight: 800; font-size: 18px; color: var(--acc); }
+  .tag { font-size: 12px; padding: 1px 8px; border-radius: 99px; background: #efe9f6; color: var(--acc); }
+  .tag.id { background: #eee; color: #666; }
+  .line { display: grid; grid-template-columns: 64px 32px 1fr; gap: 6px; align-items: start; padding: 4px 0; }
+  .line .who { font-size: 13px; color: var(--sub); padding-top: 3px; }
+  .hk { font-size: 18px; font-weight: 600; }
+  .zh { font-size: 14px; color: var(--sub); }
+  .py { font-size: 12px; color: #a39bab; }
+  .spk { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: #faf8f5; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+  .spk.on { background: var(--acc); color: #fff; border-color: var(--acc); }
+  .bar { display: flex; align-items: center; gap: 10px; margin: 8px 0 10px; }
+  .bar button { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--acc); background: #fff; color: var(--acc); cursor: pointer; white-space: nowrap; }
+  .bar input { flex: 1; accent-color: var(--acc); }
+  .bar .t { font-size: 12px; color: var(--sub); min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+  .opts { border-top: 1px dashed var(--line); padding-top: 8px; }
+  .opt { display: grid; grid-template-columns: 26px 32px 1fr auto; gap: 6px; align-items: start; padding: 6px 8px; border-radius: 8px; }
+  .opt.right { background: var(--okbg); }
+  .opt .k { font-weight: 800; padding-top: 2px; }
+  .kind { font-size: 12px; padding: 1px 8px; border-radius: 4px; color: #fff; white-space: nowrap; margin-top: 3px; }
+  .kind.ok { background: var(--ok); } .kind.near { background: var(--near); } .kind.far { background: var(--far); }
+  .kind small { opacity: .85; }
+  .hideAns .opt.right { background: transparent; } .hideAns .kind { visibility: hidden; }
+  @media (max-width: 599px) { .line { grid-template-columns: 1fr 32px; } .line .who { grid-column: 1 / -1; padding: 0; } .line .spk { grid-row: 2; grid-column: 2; } .line .txt { grid-row: 2; grid-column: 1; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>第一關題目檢查</h1>
+  <label>腔調 <select id="dia"></select></label>
+  <label>難度 <select id="lv">
+    <option value="easy">初級（2 個遠誘答）</option>
+    <option value="mid">中級（近 1＋遠 1）</option>
+    <option value="hard">進階（2 個近誘答）</option>
+  </select></label>
+  <button id="again">重新抽</button>
+  <label><input type="checkbox" id="hide"> 先藏答案</label>
+  <span class="note" id="count"></span>
+</header>
+<main>
+  <div class="legend">每次都把該腔全部題目隨機排序，誘答用和遊戲一樣的規則抽。
+    <b style="background:var(--ok)">正解</b>
+    <b style="background:var(--near)">近誘答</b> 同一段對話、答非所問
+    <b style="background:var(--far)">遠誘答</b> 別的主題的答句（後面括號是它原本的主題）</div>
+  <div id="list"></div>
+</main>
+<script src="data.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const AUDIO = "";
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = (a, n) => shuffle(a).slice(0, n);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+for (const d of Object.keys(QUIZ)) $("dia").add(new Option(d, d));
+const qs = new URLSearchParams(location.search);
+if (qs.get("level")) $("lv").value = qs.get("level");
+
+// 同 dream1.html buildRound()，只是不只抽 7 題：全部題目洗牌
+function build() {
+  const bank = QUIZ[$("dia").value], level = $("lv").value;
+  const topicOf = new Map(bank.map(x => [x.a.h, x.topic]));
+  return shuffle(bank).map(item => {
+    const far = bank.filter(x => x.decoy && x.topic !== item.topic && x.a.h !== item.a.h).map(x => ({ ...x.a, kind: "far", from: x.topic }));
+    const near = item.near.map(x => ({ ...x, kind: "near" }));
+    const wrong = level === "hard" ? near : level === "mid" ? [pick(near, 1)[0], pick(far, 1)[0]] : pick(far, 2);
+    return { item, opts: shuffle([{ ...item.a, kind: "ok" }, ...wrong]) };
+  });
+}
+
+const lineHTML = (who, L, k) => `<div class="line"><span class="who">${who}</span>
+  <button class="spk" data-src="${esc(L.s)}" title="播放這句">🔊</button>
+  <div class="txt"><div class="hk">${esc(L.h)}</div><div class="zh">${esc(L.m)}</div><div class="py">${esc(L.p)}</div></div></div>`;
+
+function render() {
+  stop();
+  const round = build();
+  $("count").textContent = `共 ${round.length} 題`;
+  $("list").innerHTML = round.map(({ item, opts }, i) => `
+    <section class="q" data-i="${i}">
+      <div class="q-head"><span class="q-no">第 ${i + 1} 題</span><span class="tag">${esc(item.topic)}</span><span class="tag id">題庫 #${item.id}</span>${item.ctx.length ? '<span class="tag">有前情句</span>' : ""}</div>
+      ${item.ctx.map(c => lineHTML("前情", c)).join("")}
+      ${lineHTML("題目", item.q)}
+      <div class="bar"><button class="play">▶ 播前情＋題目</button><input type="range" min="0" max="1000" value="0" step="1"><span class="t">0.0 / –</span></div>
+      <div class="opts">${opts.map((o, j) => `
+        <div class="opt ${o.kind === "ok" ? "right" : ""}"><span class="k">${"ABC"[j]}</span>
+          <button class="spk" data-src="${esc(o.s)}" title="播放這句">🔊</button>
+          <div><div class="hk">${esc(o.h)}</div><div class="zh">${esc(o.m)}</div></div>
+          <span class="kind ${o.kind}">${o.kind === "ok" ? "正解" : o.kind === "near" ? "近誘答" : `遠誘答 <small>(${esc(o.from)})</small>`}</span></div>`).join("")}
+      </div>
+    </section>`).join("");
+  seqs = round.map(r => [...r.item.ctx, r.item.q].map(l => l.s));
+}
+
+// ---- 播放：全頁一個 Audio（同遊戲）----
+const au = new Audio(), GAP = .45;
+let seqs = [], cur = null;   // cur = { i, segs:[{src,dur}], k, sec(開始時間), raf }
+const durCache = new Map();
+const dur = src => durCache.has(src) ? Promise.resolve(durCache.get(src)) : new Promise(res => {
+  const a = new Audio(); a.preload = "metadata"; a.src = AUDIO + src;
+  a.onloadedmetadata = () => { durCache.set(src, a.duration); res(a.duration); }; a.onerror = () => { durCache.set(src, 0); res(0); };
+});
+function stop() {
+  au.pause(); au.onended = null;
+  document.querySelectorAll(".spk.on").forEach(b => b.classList.remove("on"));
+  if (cur) { cancelAnimationFrame(cur.raf); clearTimeout(cur.to); const q = document.querySelector(`.q[data-i="${cur.i}"] .play`); if (q) q.textContent = "▶ 播前情＋題目"; cur = null; }
+}
+function playOne(btn) {
+  const was = btn.classList.contains("on"); stop(); if (was) return;
+  btn.classList.add("on"); au.src = AUDIO + btn.dataset.src; au.currentTime = 0; au.play().catch(() => {});
+  au.onended = () => btn.classList.remove("on");
+}
+const total = c => c.segs.reduce((s, x) => s + x.dur, 0) + GAP * (c.segs.length - 1);
+const startOf = (c, k) => c.segs.slice(0, k).reduce((s, x) => s + x.dur + GAP, 0);
+async function playSeq(i, at = 0) {
+  const keepPlaying = cur && cur.i === i && !at;
+  stop(); if (keepPlaying) return;
+  const segs = await Promise.all(seqs[i].map(async s => ({ src: s, dur: await dur(s) })));
+  const c = cur = { i, segs, raf: 0, to: 0 };
+  const box = document.querySelector(`.q[data-i="${i}"]`), range = box.querySelector("input"), t = box.querySelector(".t");
+  box.querySelector(".play").textContent = "■ 停止";
+  const T = total(c);
+  let k = 0; while (k < segs.length - 1 && at >= startOf(c, k + 1)) k++;
+  const go = (k, off) => {
+    if (cur !== c) return;
+    c.k = k; au.src = AUDIO + segs[k].src; au.currentTime = Math.max(0, off); au.play().catch(() => {});
+    au.onended = () => { if (k + 1 < segs.length) c.to = setTimeout(() => go(k + 1, 0), GAP * 1000); else { stop(); range.value = 1000; t.textContent = `${T.toFixed(1)} / ${T.toFixed(1)}`; } };
+  };
+  go(k, Math.min(at - startOf(c, k), segs[k].dur));
+  const tick = () => {
+    if (cur !== c) return;
+    const now = au.paused && !au.ended ? startOf(c, c.k) + au.currentTime : startOf(c, c.k) + Math.min(au.currentTime, segs[c.k].dur);
+    range.value = Math.round(now / T * 1000); t.textContent = `${now.toFixed(1)} / ${T.toFixed(1)}`;
+    c.raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+$("list").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.classList.contains("spk")) playOne(b);
+  else if (b.classList.contains("play")) playSeq(+b.closest(".q").dataset.i);
+});
+$("list").addEventListener("change", async e => {   // 拖進度條：從那個位置開始播
+  if (e.target.type !== "range") return;
+  const i = +e.target.closest(".q").dataset.i;
+  const segs = await Promise.all(seqs[i].map(async s => ({ src: s, dur: await dur(s) })));
+  const at = e.target.value / 1000 * total({ segs });
+  stop(); playSeq(i, Math.max(at, 0.001));
+});
+$("dia").onchange = $("lv").onchange = $("again").onclick = render;
+$("hide").onchange = () => document.body.classList.toggle("hideAns", $("hide").checked);
+render();
+</script>
+</body>
+</html>
