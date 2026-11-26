@@ -15,10 +15,19 @@ python -m http.server 8766
 
 ## 遊戲流程
 1. **前導故事**（GALGAME 樣式對話，可「跳過故事情境」）→ **說明頁**：選腔調（四縣、海陸、大埔、饒平、詔安、南四縣），按「進入夢境」
-2. **第一關 聽客語，選回答**：7 題、每題 10 分。同學（像素角色）說一句客語，從 3 個客語回答選一個；答對得一張符紙
-3. **轉場**：被吸進漩渦，進入夜晚校園
+2. **第一關 聽客語，選回答**：7 題、每題 10 分。同學（像素角色）說一句客語，從 3 個客語回答選一個
+   - 答對：同學發金光、抖一下，得一張符紙
+   - 答錯：同學閃幾下變成殭屍（臉的上半部黑影、看不到眼睛，皮膚發青，外圍冒紫氣），維持到下一題
+   - 作答後按「下一夢」（最後一題是「看結果」）
+3. **轉場**：會動的神秘同學（像素、全身金光，疑惑表情＋驚訝動作）站在中間說「糟糕！被殭屍發現了！！！……」→ 教室裂開 → 殭屍王黑剪影「是誰，擾我清夢！」→ 漩渦把整個畫面捲走，進入夜晚校園
 4. **第二關 封印殭屍王**：先練習一個字，接著 3 波殭屍（第 3 波是殭屍王）。照拼音由左往右畫出每個字的聲調（音高線 1–5），畫對就蓋上「封」印；殭屍 15 秒內沒封印完，這個詞 0 分
-5. **醒來**：回到教室（插畫，非像素）→ **成績頁**：星等、稱號、評語、名次、排行榜、題目回顧（可重聽每句）
+5. **醒來**：回到教室，同學（插畫，非像素）放大站在畫面正中間（電腦版露到胸口、手機版露到腰）叫你起床，主角名牌是「你」→ **成績頁**：星等、稱號、評語、名次、排行榜、題目回顧（可重聽每句）
+
+所有對話都是 GALGAME 樣式（點一下下一句，可跳過）；殭屍王標題字卡會在中間停 1 秒，連點可直接跳過。
+
+## 第一關題目檢查頁
+`quiz_check.html`（線上：<https://coinai55741-cyber.github.io/MarkMaster/quiz_check.html>）：不用玩遊戲，直接列出該腔全部 66 題（隨機順序），誘答用和遊戲一樣的規則抽，可聽前情句＋題目（有進度條）、每個選項單獨聽，標出正解／近誘答／遠誘答。用來檢查題目、答案、誘答合不合情境。
+網址加 `?level=mid` 或 `?level=hard` 切難度（同遊戲）。
 
 劇本與成績星等的文字以 Google 文件「午休驅魔記 劇本」為準。
 第一關的題庫、抽題、誘答與計分規則詳見 [第一關規格書.md](第一關規格書.md)；第二關見 [符咒打殭屍企劃書.md](符咒打殭屍企劃書.md)。
@@ -30,7 +39,9 @@ python -m http.server 8766
 | `dream/stage2.js` | 第二關：封印殭屍王（畫聲調、殭屍、殭屍王出場） |
 | `dream/sfx.js` | 合成音效（Web Audio，沒有音效檔） |
 | `dream/lobby.css` | 說明頁、排行榜、結算頁樣式（沿用「穿搭小達人」編譯後的樣式） |
-| `dream/vector-avatar.js`、`dream/classmate.json` | 同學的向量角色引擎與資料，遊戲中即時轉成像素圖 |
+| `dream/vector-avatar.js`、`dream/classmate.json` | 同學的向量角色引擎與資料，遊戲中即時轉成像素圖（重建方法見下方「角色引擎」） |
+| `quiz_check.html` | 第一關題目檢查頁（不用玩遊戲） |
+| `engine/` | 角色引擎的改法：`markmaster_engine.patch`、原作者授權 `LICENSE_vector-avator.txt` |
 | `dream/vn/` | 前導故事／醒來的立繪（主角各表情、同學、像素版） |
 | `dream/bg2_*.png` | 7 個夢境場景背景（320×180 像素格） |
 | `dream/lobby_bg.webp`、`dream/result_bg.webp` | 說明頁、成績頁背景（原圖） |
@@ -53,7 +64,7 @@ python -m http.server 8766
 | `build_fireworks_data.py` | 產生第二關詞庫 |
 | `gen_ui_mock.py` | 用 Codex 生圖（背景、角色、立繪），原圖存在 `dream/gen/`（不進版本控制） |
 | `snap_bg.py`、`make_dream_bg.py`、`gen_warm_bg.py` | 背景轉成像素格 |
-| `make_vn.py` | 立繪去背、轉像素版 |
+| `make_vn.py` | 立繪去背、轉像素版（注意：`dream/vn/mate_think.webp` 是手動做的差分圖——臉用 `mate_wave` 的、手托下巴，重跑會被 Codex 原圖蓋掉） |
 | `make_ui_assets.py` | 介面圖 |
 
 ## 給接手工程師
@@ -61,3 +72,33 @@ python -m http.server 8766
 - **成績星等**：`starOf()` 依排行榜名次百分比給星等（5 星＝排名第 1 且滿分；4 星前 20%；3 星前 21–50%；2 星前 51–80%；1 星後 20%），稱號與評語在 `RESULT_TIERS`
 - **第二關時間**：`dream/stage2.js` 的 `WALK_SEC`（殭屍走到面前的秒數）
 - 手機直式、橫式、桌機都有版面；`prefers-reduced-motion` 時會關掉震動、旋轉等動畫
+
+## 角色引擎（`dream/vector-avatar.js`）
+同學是用 [vector-avator](https://github.com/grmchn/vector-avator)（gear_machine，MIT 授權）做的向量角色，遊戲每格把它畫到隱藏畫布，再轉成像素圖。
+`dream/vector-avatar.js` 是把引擎打包成一支 script 的結果，**有改過原版**，改法全部在 `engine/markmaster_engine.patch`。
+
+### 重建（已實測：產生的 `vector-avatar.js`、`classmate.json` 和 repo 裡的一模一樣）
+```
+git clone https://github.com/grmchn/vector-avator.git
+cd vector-avator
+git checkout f28d35d                      # 套 patch 的基準版本
+git apply <本 repo>/engine/markmaster_engine.patch
+npm install
+npx vite build -c vite.embed.config.ts    # 產生 dist-embed/vector-avatar.js
+```
+- `dist-embed/vector-avatar.js` → 複製到本 repo 的 `dream/vector-avatar.js`
+- `public/characters/classmate/vector/vector.json` → 複製成 `dream/classmate.json`
+- Windows 上請先 `git config --global core.autocrlf false` 再 clone，否則換行符號不同，patch 可能套不上
+
+### patch 的內容
+| 檔案 | 改了什麼 |
+| --- | --- |
+| `src/embed/avatar.ts`、`vite.embed.config.ts` | 新增：給遊戲用的入口（`VectorAvatar.Avatar.create(容器, { vectorUrl, width, height, idle })`）與打包設定 |
+| `src/renderers/vector/vectorRenderer.ts`、`vdata.ts` | 1. 新設定 `arms.<L/R>.overRaised`：整隻上臂舉起（手肘高過肩膀 0.25 頭半徑以上、沒有橫過胸前）時，列在裡面的部件（書包肩帶）再畫一次蓋在上臂上，只畫在手臂範圍內——肩帶不會被舉起的手臂切斷<br>2. 手舉到手肘上面（例如托下巴、捧臉）時，手掌畫在前臂上面，不再被前臂蓋住 |
+| `public/characters/classmate/`、`inputs/classmate/`、`data/characters/classmate.json`、`tools/vector/sheets/characters/classmate.*` | 新增：同學角色的原圖、參考圖、向量資料、角色設定 |
+| `tools/lipsync/lipsync.py`、`tools/vector/sheets/make.py` | 做角色、對嘴時用的工具小修正，遊戲執行不需要 |
+
+### 遊戲端做的事（在 `dream1.html`，不在引擎裡）
+- `prepAvatar()`：背景透明、關掉向量外框；另外畫一張「手的遮罩」，轉像素時把手的邊緣描成粉紅色線，手和臉重疊時看得出手指
+- `pixelize()`：k-means 收斂顏色（嘴巴的粉紅色固定保留）→ 每格取最多的顏色 → 1px 深色外框
+- 場景裡的同學用 `av`；轉場時站在前面說話的神秘同學用另一份 `av2`，兩個各自動作
