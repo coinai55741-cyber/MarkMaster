@@ -899,9 +899,9 @@ function frame(t) {
       fitCanvas(head, hw * k, hh * k, dpr); hc.imageSmoothingEnabled = false; hc.clearRect(0, 0, head.width, head.height); hc.drawImage(evil ? evilize(face, hw, hh, 0, hh * .8) : face, 0, 0, hw * k, hh * k);   // 先清空，否則手移開後會留下殘影
       if (liveStand && av2 && av2.canvas.width) {
         const keep = src; readSource(av2);
-        const LW = 113, LH = 198, lv = $("vnLive");   // 範圍 x .2–.8、y 0–.98（560×600 原圖），格子是正方形
+        const LW = 151, LH = 198, lv = $("vnLive");   // 範圍 x .1–.9、y 0–.98（560×600 原圖；左右留給張開的手肘），格子是正方形
         if (lv.width !== LW) { lv.width = LW; lv.height = LH; }
-        lv.getContext("2d").putImageData(pixelize([.2, 0, .8, .98], LW, LH), 0, 0);
+        lv.getContext("2d").putImageData(pixelize([.1, 0, .9, .98], LW, LH), 0, 0);
         src = keep;
       }
       // 夢境星點
