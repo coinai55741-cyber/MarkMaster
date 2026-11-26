@@ -376,6 +376,8 @@
   .vn-stand, .vn-hero { --h: calc(var(--head) / var(--hf, .4)); height: var(--h); width: auto; max-width: none; pointer-events: none; }
   .vn-stand { position: absolute; z-index: 1; left: 50%; bottom: calc(var(--boxtop) - var(--h) * var(--cut, .3)); transform: translateX(-50%); filter: drop-shadow(0 6px 18px #0004); }
   .vn-stand.px { image-rendering: pixelated; }
+  /* 醒來的同學（電腦版）：放大 2/3、往上，露出頭到胸口 */
+  .vn-stand.mcenter { --h: calc(var(--head) * 1.67 / var(--hf, .4)); --cut: .58 !important; }
   /* 殭屍王黑剪影（「是誰，擾我清夢！」）：整隻塗黑，外圍淡紫光 */
   .vn-stand.shadow { filter: brightness(0) drop-shadow(0 0 6px #9b6dff) drop-shadow(0 0 22px #6b3fd0aa) !important; animation: none !important; scale: 1 !important; }
   /* 金光（同第一關答對時同學身上的光）：亮黃細邊＋橘金柔光暈，慢慢脈動 */
@@ -413,6 +415,8 @@
     .vn-box { width: calc(100% - 24px); bottom: 12px; min-height: 0; padding: 26px 20px 34px; }
     .vn-hero, .vn-hero.px { z-index: 1; left: 2vw; bottom: calc(var(--boxtop) - var(--h) * var(--cut, .22)); }
     .vn-stand { left: auto; right: 2vw; transform: none; }
+    /* 醒來的同學：手機版也站正中間、放大到腰（同轉場的神秘同學） */
+    .vn-stand.mcenter { --h: calc(var(--head) * 1.87 / var(--hf, .4)); --cut: .4 !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important; }
   }
   @media (orientation: portrait) {
     .dg-story.vn { --head: min(13vh, 26vw); }
@@ -1040,7 +1044,7 @@ function story(beats, opts = {}) {
       if (b.hero) heroSrc = b.hero;
       setVnImg($("vnHero"), heroSrc);
       $("vnHero").classList.toggle("idle", !!heroSrc && !b.hero);
-      if (b.stand !== undefined) { setVnImg($("vnStand"), b.stand); standWho = b.stand ? b.who : null; $("vnStand").classList.toggle("center", !!b.center); $("vnStand").classList.toggle("glow", !!b.glow); $("vnStand").classList.toggle("shadow", !!b.shadow); }   // glow：冒答對時的金光   // center：置中、放大、只露到腰
+      if (b.stand !== undefined) { setVnImg($("vnStand"), b.stand); standWho = b.stand ? b.who : null; $("vnStand").classList.toggle("center", !!b.center); $("vnStand").classList.toggle("glow", !!b.glow); $("vnStand").classList.toggle("shadow", !!b.shadow); $("vnStand").classList.toggle("mcenter", !!b.mcenter); }   // mcenter：手機版置中放大   // glow：冒答對時的金光   // center：置中、放大、只露到腰
       $("vnStand").classList.toggle("idle", !!standWho && b.who !== standWho);   // 不是他在講話：壓暗、往後退一點
       // live：中間的人改用會動的神秘同學（畫布），位置、大小、金光、壓暗都跟 vnStand 一樣
       if (b.stand !== undefined) liveStand = !!b.live && !!b.stand;
@@ -1196,18 +1200,19 @@ $("lbAll").onclick = async () => { DSFX.decide(); leaderboard = await leaderboar
 const VN = {
   heroSleepy: "dream/vn/hero_sleepy.webp", heroClosed: "dream/vn/hero_closed.webp", heroOpen: "dream/vn/hero_open.webp",
   heroSurprised: "dream/vn/hero_surprised.webp", heroSurprisedPx: "dream/vn/hero_surprised_px.webp?v=3", heroLaugh: "dream/vn/hero_laugh.webp",
-  mysteryPx: "dream/vn/mate_px.webp", bossShadow: "dream/boss.png",   // 殭屍王（用 CSS 塗成黑剪影） mateWave: "dream/vn/mate_wave.webp", mateThink: "dream/vn/mate_think.webp",
+  mysteryPx: "dream/vn/mate_px.webp", mateWave: "dream/vn/mate_wave.webp", mateThink: "dream/vn/mate_think.webp",
+  bossShadow: "dream/boss.png",   // 殭屍王（用 CSS 塗成黑剪影）
 };
 // 前導故事（劇本「▼前導故事」）
 const PROLOGUE = [
-  { who: "主角", hero: VN.heroSleepy, stand: null, text: "今天天氣真暖" },                                  // 快睡著
-  { who: "主角", hero: VN.heroClosed, text: "好想睡覺……" },                                                // 眼睛閉起來
+  { who: "你", hero: VN.heroSleepy, stand: null, text: "今天天氣真暖" },                                  // 快睡著
+  { who: "你", hero: VN.heroClosed, text: "好想睡覺……" },                                                // 眼睛閉起來
   { who: "神秘同學", stand: VN.mysteryPx, text: "怎麼會有人類在這裡，嗯嗯……你看起來有很會客語呢。" },
-  { who: "主角", hero: VN.heroOpen, text: "你是誰？" },                                                     // 眼睛睜開
+  { who: "你", hero: VN.heroOpen, text: "你是誰？" },                                                     // 眼睛睜開
   { who: "神秘同學", text: "如何破除這夢境，就要看看你的能力了。" },
   { who: "神秘同學", text: "這裡有七層夢境，依照情境回答正確句子吧！小心不要說錯話，被殭屍們發現。" },
   { who: "神秘同學", text: "破一層夢境就可以得到一張符紙。加油吧！" },
-  { who: "主角", hero: VN.heroSurprised, text: "欸！",                                                      // 驚訝 → 閃一閃變像素畫
+  { who: "你", hero: VN.heroSurprised, text: "欸！",                                                      // 驚訝 → 閃一閃變像素畫
     fx: () => setTimeout(() => flickerTo($("vnHero"), VN.heroSurprisedPx), 500) },
 ];
 function start() {
@@ -1397,9 +1402,9 @@ async function ending() {
   $("introBack").hidden = true;
   show("intro");
   await story([
-    { who: "同學", stand: VN.mateWave, text: "欸，起床了啦！鐘都響了。" },
-    { who: "同學", stand: VN.mateThink, text: "你剛剛睡覺手一直在空中比來比去欸，在幹嘛？" },
-    { who: "主角", hero: VN.heroLaugh, text: "我去驅魔了。" },   // 動作：看著手上的符紙，大笑（hero_laugh 圖）
+    { who: "同學", stand: VN.mateWave, mcenter: true, text: "欸，起床了啦！鐘都響了。" },
+    { who: "同學", stand: VN.mateThink, mcenter: true, text: "你剛剛睡覺手一直在空中比來比去欸，在幹嘛？" },
+    { who: "你", hero: VN.heroLaugh, text: "我去驅魔了。" },   // 動作：看著手上的符紙，大笑（hero_laugh 圖）
   ]);
   st.score2 = S2.score();
   st.elapsed = timer.get();
