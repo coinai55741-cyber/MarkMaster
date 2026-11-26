@@ -1,0 +1,2 @@
+# patch 要保持原本的換行符號（LF），否則 Windows 上 git apply 會失敗
+*.patch -text
