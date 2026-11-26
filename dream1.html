@@ -375,6 +375,18 @@
   .vn-stand, .vn-hero { --h: calc(var(--head) / var(--hf, .4)); height: var(--h); width: auto; max-width: none; pointer-events: none; }
   .vn-stand { position: absolute; z-index: 1; left: 50%; bottom: calc(var(--boxtop) - var(--h) * var(--cut, .3)); transform: translateX(-50%); filter: drop-shadow(0 6px 18px #0004); }
   .vn-stand.px { image-rendering: pixelated; }
+  /* 殭屍王黑剪影（「是誰，擾我清夢！」）：整隻塗黑，外圍淡紫光 */
+  .vn-stand.shadow { filter: brightness(0) drop-shadow(0 0 6px #9b6dff) drop-shadow(0 0 22px #6b3fd0aa) !important; animation: none !important; scale: 1 !important; }
+  /* 金光（同第一關答對時同學身上的光）：亮黃細邊＋橘金柔光暈，慢慢脈動 */
+  .vn-stand.glow { animation: vnGlow 1.6s ease-in-out infinite alternate; }
+  @keyframes vnGlow {
+    from { filter: drop-shadow(0 0 2px #fff6c0) drop-shadow(0 0 10px #ffd54acc) drop-shadow(0 0 26px #ffb83088); }
+    to   { filter: drop-shadow(0 0 3px #fff6c0) drop-shadow(0 0 16px #ffe27a) drop-shadow(0 0 40px #ffb830aa); }
+  }
+  .vn-stand.glow.idle { animation: none; filter: brightness(.55) saturate(.8) drop-shadow(0 0 10px #ffd54a66); }
+  @media (prefers-reduced-motion: reduce) { .vn-stand.glow { animation: none; filter: drop-shadow(0 0 3px #fff6c0) drop-shadow(0 0 14px #ffd54a); } }
+  /* 置中大隻（轉場的神秘同學）：放大、站在正中間、腰以下藏在對話框後面 */
+  .vn-stand.center { --h: calc(var(--head) * 1.4 / var(--hf, .4)); --cut: .22 !important; left: 50% !important; right: auto !important; transform: translateX(-50%) !important; }
   .vn-stand { transform-origin: 50% 100%; transition: filter .25s, scale .25s, translate .25s; }
   .vn-stand.idle { filter: brightness(.55) saturate(.8) drop-shadow(0 6px 18px #0004); scale: .92; }
   .vn-box { position: absolute; z-index: 2; left: 50%; bottom: 3vh; transform: translateX(-50%); width: min(1000px, 62vw); min-height: 150px; box-sizing: border-box; padding: 30px 64px 34px 100px;
@@ -406,12 +418,12 @@
   }
   .dg-story .dg-msg { position: relative; left: auto; bottom: auto; width: min(1100px, 100%); min-height: 150px; }
   .dg-story .dg-msg-text { font-size: clamp(22px, 1.8vw, 32px); }
-  .dg-crack { position: fixed; inset: 0; z-index: 15; pointer-events: none; }
+  .dg-crack { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 15; pointer-events: none; }   /* SVG 要明寫寬高，直式畫面才會撐滿 */
   .dg-crack path { fill: none; stroke: #e6d8ff; stroke-width: 4; filter: drop-shadow(0 0 6px #9b6dff); stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: crack 1.1s ease-out forwards; }
   @keyframes crack { to { stroke-dashoffset: 0; } }
   .dg-vortex { position: fixed; inset: -20%; z-index: 16; pointer-events: none; background: repeating-conic-gradient(from 0deg, #4c2d8a 0 12deg, #2a1950 12deg 24deg); opacity: 0; animation: vortex 1.3s ease-in forwards; }
   @keyframes vortex { 0% { opacity: 0; transform: rotate(0) scale(1.4); } 55% { opacity: .9; } 100% { opacity: 0; transform: rotate(540deg) scale(.15); } }   /* 最後淡掉，不留殘影 */
-  #dgSrc { position: absolute; left: -9999px; top: 0; width: 280px; height: 300px; }
+  #dgSrc, #dgSrc2 { position: absolute; left: -9999px; top: 0; width: 280px; height: 300px; }
 </style>
 </head>
 <body>
@@ -509,7 +521,7 @@
         </div>
       </div>
       <div class="dg-opts" id="dgOpts"></div>
-      <button class="dg-next" id="dgNext" hidden>下一題<svg class="ic" aria-hidden="true"><use href="ui/icons.svg#chevron-right"></use></svg></button>
+      <button class="dg-next" id="dgNext" hidden>下一夢<svg class="ic" aria-hidden="true"><use href="ui/icons.svg#chevron-right"></use></svg></button>
     </div>
   </section>
 
@@ -544,6 +556,7 @@
   <!-- GALGAME 樣式：說話的人站在中間（vnStand），主角說話時在對話框左邊出現小半身像（vnHero） -->
   <div class="dg-story vn" id="story" hidden>
     <img class="vn-stand" id="vnStand" alt="" hidden>
+    <canvas class="vn-stand px" id="vnLive" hidden></canvas>   <!-- 會動的神秘同學（live：av2 即時轉像素） -->
     <img class="vn-hero" id="vnHero" alt="" hidden>
     <div class="vn-box" role="status" aria-live="polite">
       <span class="vn-name" id="storyName"></span>
@@ -602,10 +615,10 @@
     </article>
   </div>
 </main>
-<div id="dgSrc"></div>
+<div id="dgSrc"></div><div id="dgSrc2"></div>
 
 <script src="data.js"></script>
-<script src="dream/vector-avatar.js"></script>
+<script src="dream/vector-avatar.js?v=5"></script>
 <script src="dream/sfx.js?v=20261125c"></script>
 <script src="fireworks_data.js"></script>
 <script src="tone.js"></script>
@@ -707,7 +720,7 @@ for (const k of Object.keys(SCENES)) {
 // ---- 向量同學 → 像素（每格看原圖全解析度、取最多的顏色；嘴巴粉紅色固定保留）----
 const OUT = [34, 28, 40], KEEP = ["#B4505E", "#E0607A", "#F7A6B4"];
 const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-let av = null, palette = null, src = null;
+let av = null, av2 = null, palette = null, src = null;   // av：場景裡的同學；av2：轉場時站在前面說話的神秘同學
 const cache = new Map();
 function kmeans(px, k) {
   const pts = px.slice().sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
@@ -726,7 +739,9 @@ function nearest(r, g, b) {
   for (let j = 0; j < palette.length; j++) { const p = palette[j], d = (r - p[0]) ** 2 + (g - p[1]) ** 2 + (b - p[2]) ** 2; if (d < bd) { bd = d; bi = j; } }
   cache.set(key, bi); return bi;
 }
-function readSource() { const c = av.canvas; src = { w: c.width, h: c.height, d: c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data }; }
+function readSource(a = av) { const c = a.canvas, m = a.handMask; src = { w: c.width, h: c.height, d: c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data, hand: m && m.width === c.width ? m.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data : null }; }
+// 手的遮罩：每格畫面另外記下哪些像素是手（被袖子、前臂蓋住的地方會擦掉），轉像素時替手描邊，手壓在臉上也看得出手指
+const HAND_EDGE = [232, 140, 150];   // 手跟臉、身體重疊處的框線（柔和的粉紅色）
 function makePalette() {
   const px = [], d = src.d;
   for (let i = 0; i < d.length; i += 28) if (d[i + 3] > 250) px.push([d[i], d[i + 1], d[i + 2]]);
@@ -738,18 +753,27 @@ function pixelize(rect, w, h) {
   const X0 = rx0 * sw, Y0 = ry0 * sh, cw = (rx1 - rx0) * sw / w, ch = (ry1 - ry0) * sh / h;
   const step = Math.max(1, Math.floor(Math.min(cw, ch) / 4));
   const im = new ImageData(w, h), a = im.data, solid = new Uint8Array(w * h), votes = new Uint16Array(palette.length);
+  const hd = src.hand, isHand = new Uint8Array(w * h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    votes.fill(0); let op = 0, all = 0;
+    votes.fill(0); let op = 0, all = 0, hv = 0;
     const xa = Math.floor(X0 + x * cw), xb = Math.floor(X0 + (x + 1) * cw), ya = Math.floor(Y0 + y * ch), yb = Math.floor(Y0 + (y + 1) * ch);
     for (let sy = ya; sy < yb; sy += step) for (let sx = xa; sx < xb; sx += step) {
       all++;
       if (sx < 0 || sy < 0 || sx >= sw || sy >= sh) continue;
       const o = (sy * sw + sx) * 4;
       if (sd[o + 3] < 128) continue; op++; votes[nearest(sd[o], sd[o + 1], sd[o + 2])]++;
+      if (hd && hd[o + 3] > 128) hv++;
     }
     if (op * 2 < all) continue;
     let bi = 0; for (let j = 1; j < votes.length; j++) if (votes[j] > votes[bi]) bi = j;
     const o = (y * w + x) * 4; a[o] = palette[bi][0]; a[o + 1] = palette[bi][1]; a[o + 2] = palette[bi][2]; a[o + 3] = 255; solid[y * w + x] = 1;
+    if (hd && hv * 2 > op) isHand[y * w + x] = 1;
+  }
+  // 手的格子旁邊是不是手的格子（臉、身體）→ 這格塗框線，看得出手和手指的形狀
+  if (hd) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!isHand[i]) continue;
+    const nb = j => solid[j] && !isHand[j];
+    if ((x > 0 && nb(i - 1)) || (x < w - 1 && nb(i + 1)) || (y > 0 && nb(i - w)) || (y < h - 1 && nb(i + w))) { const o = i * 4; a[o] = HAND_EDGE[0]; a[o + 1] = HAND_EDGE[1]; a[o + 2] = HAND_EDGE[2]; }
   }
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x; if (solid[i]) continue;
@@ -777,6 +801,46 @@ const portraitMode = () => matchMedia("(orientation: portrait), (max-width: 899p
 const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const glowCv = document.createElement("canvas"), gc = glowCv.getContext("2d");
 let glowT0 = -1e9;   // 答對時設成 performance.now()，frame() 會畫金光
+// 答錯：同學閃幾下變成殭屍——臉的上半部被黑影蓋住（看不到眼睛）、皮膚發青，外圍冒紫色氣（同說明頁趴睡的學生）
+// evilT0：答錯的時間（-1＝正常）。維持到下一題
+let evilT0 = -1;
+const evilCv = document.createElement("canvas"), ec = evilCv.getContext("2d");
+function evilize(src, w, h, y0, y1) {   // 回傳變身後的圖：src 的 y0～y1（頭頂到眼睛下面）蓋黑影
+  evilCv.width = w; evilCv.height = h; ec.clearRect(0, 0, w, h); ec.drawImage(src, 0, 0);
+  ec.globalCompositeOperation = "source-atop";
+  ec.fillStyle = "rgba(70,110,90,.28)"; ec.fillRect(0, 0, w, h);                 // 皮膚發青
+  const g = ec.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, "rgba(12,6,24,.9)"); g.addColorStop(.9, "rgba(12,6,24,.9)"); g.addColorStop(1, "rgba(12,6,24,.18)");
+  ec.fillStyle = g; ec.fillRect(0, Math.floor(y0), w, Math.ceil(y1 - y0));
+  ec.globalCompositeOperation = "source-over";
+  return evilCv;
+}
+// 殭屍的紫色氣：剪影往外擴 → 用往上捲的雜訊扭曲 → 模糊，畫在同學後面
+const auraIn = document.createElement("canvas"), ai = auraIn.getContext("2d", { willReadFrequently: true });
+const auraOut = document.createElement("canvas"), ao = auraOut.getContext("2d");
+function drawEvilAura(t, img, x, y, w, h, alpha) {
+  if (!kidAura.ready()) return;
+  const K = 3, P = Math.round(Math.max(w, h) * .18);            // 計算格：3 格算一次；外擴範圍
+  const W = Math.ceil((w + P * 2) / K), H = Math.ceil((h + P * 2) / K);
+  auraIn.width = W; auraIn.height = H; ai.clearRect(0, 0, W, H);
+  const g = Math.max(1, Math.round(P * .35 / K));
+  for (let i = 0; i <= 16; i++) { const a = i / 16 * Math.PI * 2, r = i === 16 ? 0 : g; ai.drawImage(img, P / K + Math.cos(a) * r, P / K + Math.sin(a) * r, w / K, h / K); }
+  const src = ai.getImageData(0, 0, W, H).data, out = ai.createImageData(W, H), o = out.data;
+  const warp = P * .55 / K, sc = 256 / 60, scroll = t / 1000 * 40;
+  for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
+    const u = xx * sc, v = yy * sc + scroll;
+    const sx = Math.round(xx + kidAura.nz(u, v, 0) * warp), sy = Math.round(yy + kidAura.nz(u, v, 1) * warp);
+    const i = (yy * W + xx) * 4;
+    o[i] = 155; o[i + 1] = 77; o[i + 2] = 255;
+    o[i + 3] = sx >= 0 && sy >= 0 && sx < W && sy < H ? src[(sy * W + sx) * 4 + 3] : 0;
+  }
+  auraOut.width = W; auraOut.height = H; ao.putImageData(out, 0, 0);
+  const X = x - P, Y = y - P, WW = w + P * 2, HH = h + P * 2, blur = Math.max(2, P * .25);
+  scene.save(); scene.imageSmoothingEnabled = true;
+  scene.filter = `blur(${blur}px)`; scene.globalAlpha = alpha * .8; scene.drawImage(auraOut, X, Y, WW, HH);
+  scene.filter = `blur(${blur * .3}px) brightness(.45)`; scene.globalAlpha = alpha * .6; scene.drawImage(auraOut, X, Y, WW, HH);
+  scene.restore(); scene.imageSmoothingEnabled = false;
+}
 function frame(t) {
   const bg = BG[st.scene];
   if (!$("game").hidden && av && av.canvas.width && bg && bg.img.complete) {
@@ -820,13 +884,25 @@ function frame(t) {
         }
         scene.restore();
       }
-      scene.drawImage(body, cx + sx, cy, bw * px, bh * px);
+      // 答錯：前 0.7 秒正常／殭屍交替閃，之後維持殭屍；紫色氣淡入
+      const ee = evilT0 < 0 ? -1 : t - evilT0;
+      const evil = ee >= 0 && (ee > 700 || reduceMotion() || Math.floor(ee / 90) % 2 === 1);
+      if (ee >= 0) drawEvilAura(t, body, cx + sx, cy, bw * px, bh * px, Math.min(1, ee / 900));
+      const hr = headRect(), hy0 = hr[1] * bh, hy1 = hr[1] * bh + (hr[3] - hr[1]) * bh * .8;
+      scene.drawImage(evil ? evilize(body, bw, bh, 0, hy1) : body, cx + sx, cy, bw * px, bh * px);
       // 對話框旁的大頭像：整數倍
       const hw = PORTRAIT_W, hh = Math.round(hw * (HEAD_RECT[3] - HEAD_RECT[1]) * 600 / ((HEAD_RECT[2] - HEAD_RECT[0]) * 560));
       const want = portraitMode() ? 110 : innerWidth >= 1500 ? 256 : 128;
       const k = Math.max(1, Math.round(want * dpr / hw));
       face.width = hw; face.height = hh; fc.putImageData(pixelize(headRect(), hw, hh), 0, 0);
-      fitCanvas(head, hw * k, hh * k, dpr); hc.imageSmoothingEnabled = false; hc.clearRect(0, 0, head.width, head.height); hc.drawImage(face, 0, 0, hw * k, hh * k);   // 先清空，否則手移開後會留下殘影
+      fitCanvas(head, hw * k, hh * k, dpr); hc.imageSmoothingEnabled = false; hc.clearRect(0, 0, head.width, head.height); hc.drawImage(evil ? evilize(face, hw, hh, 0, hh * .8) : face, 0, 0, hw * k, hh * k);   // 先清空，否則手移開後會留下殘影
+      if (liveStand && av2 && av2.canvas.width) {
+        const keep = src; readSource(av2);
+        const LW = 113, LH = 198, lv = $("vnLive");   // 範圍 x .2–.8、y 0–.98（560×600 原圖），格子是正方形
+        if (lv.width !== LW) { lv.width = LW; lv.height = LH; }
+        lv.getContext("2d").putImageData(pixelize([.2, 0, .8, .98], LW, LH), 0, 0);
+        src = keep;
+      }
       // 夢境星點
       spark.clearRect(0, 0, sparkCv.width, sparkCv.height);
       for (let n = 0; n < 16; n++) {
@@ -937,15 +1013,15 @@ function show(id) { for (const s of ["intro", "lobby", "game", "stage2", "result
 //   hero：主角說話時對話框左邊的小半身像（沒寫＝這句不顯示）
 //   stand：站在畫面中間的角色（沒寫＝沿用上一句，null＝拿掉）
 //   opts.skip：右下角顯示「跳過故事情境」，按了直接結束這段對話
-let skipStory = null, standWho = null, heroSrc = null;   // standWho：站在中間的是誰（第一次放他上來那句的說話者）
+let skipStory = null, standWho = null, heroSrc = null, liveStand = false;   // standWho：站在中間的是誰（第一次放他上來那句的說話者）
 const VN_META = [   // [檔名關鍵字, 頭頂到下巴佔整張圖的比例, 藏在對話框後面的比例]
-  ["hero_surprised_px", .52, .3], ["hero_", .40, .22], ["mate_px", .48, .1], ["mate_", .25, .45],
+  ["hero_surprised_px", .52, .3], ["hero_", .40, .22], ["mate_px", .48, .1], ["boss", .42, .15], ["mate_", .25, .45],
 ];
 function setVnImg(el, src) {
   if (!src) { el.hidden = true; el.removeAttribute("src"); return; }
   const m = VN_META.find(([k]) => src.includes(k)) || [, .4, .2];
   el.style.setProperty("--hf", m[1]); el.style.setProperty("--cut", m[2]);
-  el.classList.toggle("px", /_px\./.test(src));
+  el.classList.toggle("px", /_px\.|boss\.png/.test(src));
   if (el.getAttribute("src") !== src) { el.onerror = () => { el.hidden = true; }; el.src = src; }
   el.hidden = false;
 }
@@ -954,7 +1030,7 @@ function story(beats, opts = {}) {
     let k = 0;
     const el = $("story");
     heroSrc = null; standWho = null;
-    const finish = () => { el.hidden = true; el.onclick = null; removeEventListener("keydown", key); skipStory = null; $("vnSkip").hidden = true; setVnImg($("vnHero"), null); setVnImg($("vnStand"), null); done(); };
+    const finish = () => { el.hidden = true; el.onclick = null; removeEventListener("keydown", key); skipStory = null; $("vnSkip").hidden = true; setVnImg($("vnHero"), null); setVnImg($("vnStand"), null); liveStand = false; $("vnLive").hidden = true; done(); };
     const showBeat = () => {
       const b = beats[k];
       $("storyName").textContent = b.who || ""; $("storyName").hidden = !b.who;
@@ -963,8 +1039,12 @@ function story(beats, opts = {}) {
       if (b.hero) heroSrc = b.hero;
       setVnImg($("vnHero"), heroSrc);
       $("vnHero").classList.toggle("idle", !!heroSrc && !b.hero);
-      if (b.stand !== undefined) { setVnImg($("vnStand"), b.stand); standWho = b.stand ? b.who : null; }
+      if (b.stand !== undefined) { setVnImg($("vnStand"), b.stand); standWho = b.stand ? b.who : null; $("vnStand").classList.toggle("center", !!b.center); $("vnStand").classList.toggle("glow", !!b.glow); $("vnStand").classList.toggle("shadow", !!b.shadow); }   // glow：冒答對時的金光   // center：置中、放大、只露到腰
       $("vnStand").classList.toggle("idle", !!standWho && b.who !== standWho);   // 不是他在講話：壓暗、往後退一點
+      // live：中間的人改用會動的神秘同學（畫布），位置、大小、金光、壓暗都跟 vnStand 一樣
+      if (b.stand !== undefined) liveStand = !!b.live && !!b.stand;
+      const lv = $("vnLive"); lv.hidden = !liveStand;
+      if (liveStand) { $("vnStand").hidden = true; lv.className = $("vnStand").className; lv.style.setProperty("--hf", .48); lv.style.setProperty("--cut", .1); }
       el.style.setProperty("--vnbox", el.querySelector(".vn-box").offsetHeight + "px");   // 手機版：右邊的角色站在對話框上緣
       if (b.fx) b.fx();
     };
@@ -1106,7 +1186,7 @@ const kidAura = (() => {
   img.addEventListener("load", start); addEventListener("resize", () => { key = ""; A = null; start(); });
   new MutationObserver(start).observe($("lobby"), { attributes: true, attributeFilter: ["hidden"] });
   start();
-  return { start, draw };
+  return { start, draw, nz, ready: () => noiseReady };
 })();
 $("resAll").onclick = showLeaderboard;
 $("lbAll").onclick = async () => { DSFX.decide(); leaderboard = await leaderboardService.getLeaderboard(); renderLobbyBoard(); $("rankModal").hidden = false; $("rankModal").querySelector(".lobby-rank-modal").focus(); };
@@ -1115,7 +1195,7 @@ $("lbAll").onclick = async () => { DSFX.decide(); leaderboard = await leaderboar
 const VN = {
   heroSleepy: "dream/vn/hero_sleepy.webp", heroClosed: "dream/vn/hero_closed.webp", heroOpen: "dream/vn/hero_open.webp",
   heroSurprised: "dream/vn/hero_surprised.webp", heroSurprisedPx: "dream/vn/hero_surprised_px.webp?v=3", heroLaugh: "dream/vn/hero_laugh.webp",
-  mysteryPx: "dream/vn/mate_px.webp", mateWave: "dream/vn/mate_wave.webp", mateThink: "dream/vn/mate_think.webp",
+  mysteryPx: "dream/vn/mate_px.webp", bossShadow: "dream/boss.png",   // 殭屍王（用 CSS 塗成黑剪影） mateWave: "dream/vn/mate_wave.webp", mateThink: "dream/vn/mate_think.webp",
 };
 // 前導故事（劇本「▼前導故事」）
 const PROLOGUE = [
@@ -1148,6 +1228,7 @@ $("introBack").onclick = () => { if (skipStory) skipStory(); };
 document.querySelector("#lobby .lobby-back-button").onclick = playIntro;
 playIntro();
 function renderQ() {
+  evilT0 = -1;   // 新的一夢：同學變回來
   const { item, opts } = st.qs[st.i], sc = sceneOf(item.topic);
   if (st.i > 0) { $("dgStage").classList.remove("dream"); void $("dgStage").offsetWidth; $("dgStage").classList.add("dream"); }
   setTimeout(() => { st.scene = sc; $("dgSoft").style.backgroundImage = `url(${BG[sc].soft || BG[sc].img.src})`; }, st.i === 0 ? 0 : 360);
@@ -1203,9 +1284,9 @@ function answer(n) {
   $("dgCue").hidden = false;
   // 選項上方不放對錯提示：對錯看選項的綠／紅框、符紙、音效和同學的反應
   if (right) { DSFX.correct(); av.setExpression("smile"); av.play("mb_wave"); glowT0 = performance.now(); setTimeout(dropPaper, 450); }
-  else { DSFX.wrong(); DSFX.shake($("dgStage"), 1); DSFX.shake($("dgMsg"), .6); av.setExpression("troubled"); av.play("think"); }
+  else { DSFX.wrong(); DSFX.shake($("dgStage"), 1); DSFX.shake($("dgMsg"), .6); av.setExpression("troubled"); av.play("think"); evilT0 = performance.now(); DSFX.vortex(); }   // 答錯：同學變殭屍
   // 選完不唸答案（答案句子到最後的成績頁才能聽）
-  $("dgNext").innerHTML = (st.i + 1 < ROUND ? "下一題" : "看結果") + IC("chevron-right");
+  $("dgNext").innerHTML = (st.i + 1 < ROUND ? "下一夢" : "看結果") + IC("chevron-right");
   $("dgNext").hidden = false;
 }
 $("dgNext").onclick = () => { DSFX.page(); speakId++; audio.pause(); st.i++; if (st.i < ROUND) { DSFX.dream(); renderQ(); } else finish(); };
@@ -1272,14 +1353,16 @@ $("resReview").addEventListener("click", e => {
 async function finish() {
   timer.pause(); speakId++; audio.pause();
   $("game").querySelector(".dg-ui").hidden = true;
-  av.setExpression("surprised"); av.play("nod_surprise");
+  // 場景裡的同學：最後一題答錯（變成殭屍）就繼續疑惑，答對才驚訝
+  if (evilT0 >= 0) { av.setExpression("troubled"); av.play("think"); } else { av.setExpression("surprised"); av.play("nod_surprise"); }
   // 符紙發光 → 夢境裂開 → 被吸走
   $("dgFu").animate([{ boxShadow: "0 0 0 #ffd66a" }, { boxShadow: "0 0 26px 10px #ffd66a" }, { boxShadow: "0 0 0 #ffd66a" }], { duration: 900, iterations: 3 });
   let crack = null;
   await story([
-    { who: "神秘同學", text: "拿好我交給你的符紙，準備開始嘍！", fx: () => DSFX.paper() },
+    { who: "神秘同學", stand: VN.mysteryPx, live: true, center: true, glow: true, text: "糟糕！被殭屍發現了！！！拿好我交給你的符紙，準備開始嘍！",
+      fx: () => { DSFX.paper(); av2.setExpression("troubled"); av2.play("kimodo_nod_surprise"); } },   // 說話的是大的神秘同學（跟場景裡冒紫氣的不是同一個）
     { who: "", text: "（四周的教室開始一塊一塊地裂開……）", fx: () => { crack = crackFx(); } },
-    { who: "？？？", text: "是誰，擾我清夢！", fx: () => { DSFX.vortex(); const v = document.createElement("div"); v.className = "dg-vortex"; document.body.appendChild(v); setTimeout(() => v.remove(), 1500); } },
+    { who: "？？？", stand: VN.bossShadow, center: true, shadow: true, text: "是誰，擾我清夢！", fx: () => { DSFX.vortex(); const v = document.createElement("div"); v.className = "dg-vortex"; document.body.appendChild(v); setTimeout(() => v.remove(), 1500); } },
   ]);
   await swirlAway(crack);
   if (crack) crack.remove();
@@ -1329,20 +1412,37 @@ $("startBtn").onclick = start;
 document.addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.closest(".dg-opt") || b.id === "dgNext") return; (/Back|Home|Close|rankClose/.test(b.id) || b.classList.contains("lobby-back-button") ? DSFX.cancel : DSFX.decide)(); }, true);
 
 // ---- 載入向量同學 ----
+// 透明底、不畫向量輪廓線（像素版自己補外框）；另外記一張「手的遮罩」，轉像素時替手描粉紅框線
+function prepAvatar(a) {
+  const r = a.renderer;
+  if (!(r && r.opt && r.drawAll && r.g)) return a;
+  r.opt.bg = "rgba(0,0,0,0)";
+  if (r.opt.outline) r.opt.outline.enabled = false;
+  const mask = a.handMask = document.createElement("canvas"), mc = mask.getContext("2d", { willReadFrequently: true });
+  const draw = r.drawAll.bind(r);
+  r.drawAll = e => {
+    r.g.setTransform(1, 0, 0, 1, 0, 0); r.g.clearRect(0, 0, r.W, r.H);
+    const c = a.canvas; if (mask.width !== c.width || mask.height !== c.height) { mask.width = c.width; mask.height = c.height; }
+    mc.setTransform(1, 0, 0, 1, 0, 0); mc.clearRect(0, 0, mask.width, mask.height);
+    draw(e);
+  };
+  // 每個部件畫完，也畫進手的遮罩：手＝加上，其他部件＝擦掉（蓋在手上面的袖子、前臂）
+  const di = r.drawItem.bind(r);
+  r.drawItem = (it, all) => {
+    di(it, all);
+    const g = r.g; r.g = mc; mc.globalCompositeOperation = /^hand_/.test(it.id) ? "source-over" : "destination-out";
+    di(it, all); r.g = g; mc.globalCompositeOperation = "source-over";
+  };
+  return a;
+}
 (async () => {
   leaderboard = await leaderboardService.getLeaderboard(); renderLobbyBoard();
-  av = await VectorAvatar.Avatar.create($("dgSrc"), { vectorUrl: "dream/classmate.json", width: 560, height: 600, idle: "idle" });
-  const r = av.renderer;
-  if (r && r.opt && r.drawAll && r.g) {
-    r.opt.bg = "rgba(0,0,0,0)";
-    if (r.opt.outline) r.opt.outline.enabled = false;
-    const draw = r.drawAll.bind(r);
-    r.drawAll = e => { r.g.setTransform(1, 0, 0, 1, 0, 0); r.g.clearRect(0, 0, r.W, r.H); draw(e); };
-  }
+  av = prepAvatar(await VectorAvatar.Avatar.create($("dgSrc"), { vectorUrl: "dream/classmate.json", width: 560, height: 600, idle: "idle" }));
+  av2 = prepAvatar(await VectorAvatar.Avatar.create($("dgSrc2"), { vectorUrl: "dream/classmate.json", width: 560, height: 600, idle: "idle" }));
   requestAnimationFrame(frame);
   $("startBtn").disabled = false; $("startBtn").textContent = "進入夢境";
 })();
 </script>
-<script src="dream/stage2.js?v=20261125n"></script>
+<script src="dream/stage2.js?v=20261126a"></script>
 </body>
 </html>

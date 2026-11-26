@@ -393,7 +393,7 @@
     $("s2Listen").hidden = true;                        // 練習時還沒有詞可以聽
     sizePad();
     // 教學：用一個不計分的字練習一次（計時暫停）
-    await story([{ who: "同學（符紙裡傳來的聲音）", text: "別慌！聆聽聲音，把聲調畫出來，就能把殭屍封起來！" }]);
+    await story([{ who: "神秘同學（從符紙裡傳來的聲音）", text: "別慌！聆聽聲音，把聲調畫出來，就能把殭屍封起來！" }]);
     const bank = FW_WORDS[st.dialect] || FW_WORDS["四縣腔"], used = new Set(S2.words.map(w => w.id));
     const pw = bank.find(w => !used.has(w.id) && w.h.length === 2) || bank[0];
     S2.practice = sylInfo(pw, 0);
@@ -405,7 +405,7 @@
     fb("照綠色虛線畫畫看！", "mid");
     S2.busy = false;                                   // 開放畫板（練習不計時）
     await new Promise(r => { S2.onPracticeDone = r; });
-    await story([{ who: "同學（符紙裡傳來的聲音）", text: "對，就是這樣！方向畫對，就能蓋上「封」印。" }]);
+    await story([{ who: "神秘同學（從符紙裡傳來的聲音）", text: "對，就是這樣！方向畫對，就能蓋上「封」印。" }]);
     S2.active = true; $("s2Listen").hidden = false;
     nextWave();
   };
