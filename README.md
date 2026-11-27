@@ -73,7 +73,7 @@ python -m http.server 8766
 
 ## 給接手工程師
 - **排行榜目前是假資料**：`dream1.html` 裡的 `leaderboardService`（`getLeaderboard`、`submitGameResult`），正式上線只要改這裡接後端，接法同「穿搭小達人」
-- **成績星等**：`starOf()` 依排行榜名次百分比給星等（5 星＝排名第 1 且滿分；4 星前 20%；3 星前 21–50%；2 星前 51–80%；1 星後 20%），稱號與評語在 `RESULT_TIERS`
+- **成績星等**：`starOf()` 依排行榜名次百分比（名次 ÷ 參加人數）給星等：5 星＝前 5% 且排名第 1 且滿分 100（參加不到 20 人時第 1 名不在前 5%，拿不到 5 星）；4 星前 6%～20%；3 星前 21%～50%；2 星前 51%～80%；1 星後 20%。稱號與評語在 `RESULT_TIERS`。接正式排行榜時，`submitGameResult()` 只要回傳 `myEntry.rank`（名次）、`myEntry.score`、`participantCount`（參加人數），星等就會自動算，不用改 `starOf()`；如果後端自己算星等，再把 `renderResult()` 裡呼叫 `starOf()` 的地方換成後端的值
 - **背景音樂**：`dream1.html` 的 `SCREEN_BGM` 決定每個畫面放哪首（`show()` 時切換）；曲子在 `dream/bgm.js` 的 `TRACKS`（合成曲是每小節 8 格的音符字串；音檔曲是 `{ file, gain, rate }`，`gain` 用來和合成曲對齊音量），整體音量 `VOL`、語音時壓到 `DUCK`。左上「音樂」按鈕只開關背景音樂（記在 localStorage），題目語音和音效不受影響
 - **睜眼閉眼特效**：`dream1.html` 的 `Eyes`（`close()`、`close("fast")`、`open()`、`blink()`、`set(0～1)`、`clear()`，都回傳 Promise）。上下兩個長方形眼皮＋模糊；對話中會蓋住人物但留下對話框和主角。目前只用在前導故事「好想睡覺……」：眨眼後閉上，下一句拿掉
 - **第二關時間**：`dream/stage2.js` 的 `WALK_SEC`（殭屍走到面前的秒數）

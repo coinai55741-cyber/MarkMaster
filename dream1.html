@@ -1385,10 +1385,12 @@ const RESULT_TIERS = {
   2: { title: "符紙小學徒", comment: "多聽幾次神秘同學說的話，畫聲調時跟著唸唸看，下次一定更順手。" },
   1: { title: "迷路的夢遊者", comment: "這次在夢裡繞了好一陣子，別灰心，再睡一覺、再闖一次吧！" },
 };
+// 星等（同 Google 文件「▼成績結算」）：5 星＝前 5% 且排名第 1 且滿分 100；4 星前 6%～20%；3 星前 21%～50%；2 星前 51%～80%；1 星後 20%
+// 只用排行榜回傳的 rank（名次）、participantCount（參加人數）和分數算，接正式排行榜時不用改這裡
 function starOf(rank, people, total) {
   if (!rank || !people) return 1;
-  if (rank === 1 && Math.round(total * 100) >= 10000) return 5;
   const p = rank / people;
+  if (rank === 1 && p <= .05 && Math.round(total * 100) >= 10000) return 5;   // 參加不到 20 人時，第 1 名不在前 5%，拿不到 5 星
   return p <= .2 ? 4 : p <= .5 ? 3 : p <= .8 ? 2 : 1;
 }
 function renderResult(played) {
