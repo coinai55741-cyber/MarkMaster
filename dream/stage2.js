@@ -310,7 +310,8 @@
     fb("");
     // 殭屍王最後才現身：前兩波只聽得到聲音（？？？），第三波才露臉、報上名字
     if (boss) await bossEntrance();
-    else { DSFX.wave(); await story([{ who: "？？？", text: S2.wi === 0 ? "呼啊……被你吵醒了。去吧，小的們！" : "還不錯嘛……下一隻，上！" }]); }
+    else if (S2.wi === 0) { DSFX.wave(); await story([{ who: "？？？", text: "呼啊……被你吵醒了。去吧，小的們！" }]); }
+    else { DSFX.wave(); await new Promise(r => setTimeout(r, 500)); }   // 第 2 波不再停下來講話（刷榜時比較順），只有音效
     zState.rate = (1 - zState.dist) / WALK_SEC;   // 不管從哪裡出發，走到面前的秒數都一樣
     DSFX.hop();
     renderWord(); sayWord();
@@ -378,7 +379,7 @@
   }
   function sayWord() {
     const w = S2.words[S2.wi]; if (!w || !w.s) return;
-    const a = new Audio(w.s); a.muted = !st.sound; a.play().catch(() => {});
+    const a = new Audio(w.s); a.play().catch(() => {});
   }
 
   // ---------- 對外 ----------

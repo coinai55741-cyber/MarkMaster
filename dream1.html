@@ -199,7 +199,10 @@
     background: #8f6ad0; color: #fff; cursor: pointer; padding: 0; font-size: 16px; box-shadow: 0 2px 0 #4c355c55; }
   .rv-say.on { background: #f2c14e; color: #4c355c; } .rv-say:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
   .m-only { display: none; }   /* 手機版才顯示的字（例如「下面」），在手機的 @media 裡打開 */
+  .result-ranking-note { width: 100% !important; max-width: none !important; align-self: stretch !important; box-sizing: border-box !important; }   /* 排行榜注意事項：左右滿版 */
   .lobby-back-button { background: #fff !important; }   /* 返回列表：底色不透明（原本 #ffffffab 半透明） */
+  /* 手機（直式或橫式）：返回列表只留圖示，讓出位置給「音樂」按鈕（按鈕本身有 aria-label） */
+  @media (max-width: 599px), (max-height: 500px) { .lobby-back-button .back-label { display: none; } .lobby-back-button { min-width: 0 !important; width: auto !important; padding-inline: 12px !important; gap: 0 !important; } }
   [hidden] { display: none !important; }   /* 穿搭小達人的樣式會蓋掉 hidden（例如彈窗 display:flex） */
   :root { --hakka-font: "Noto Sans TC", system-ui, sans-serif; }   /* 同穿搭小達人；客語擴充字交給瀏覽器自動找字型（不要指定 SimSun-ExtB，字形會不對） */
 
@@ -213,6 +216,7 @@
   @keyframes dgDream { 0% { filter: none; } 45% { filter: blur(7px) brightness(1.45) saturate(.7); opacity: .35; } 100% { filter: none; opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .dg-stage.dream canvas { animation: dgFade .15s; } @keyframes dgFade { from { opacity: .4; } } }
   .dg-screen .lobby-toolbar { z-index: 6; }
+  #intro .lobby-toolbar { z-index: 21 !important; }   /* 前導故事的對話層（#story, z 20）蓋滿全畫面：工具列要在它上面才按得到 */
   .dg-hud { position: absolute; top: 20px; z-index: 5; display: flex; gap: 10px; align-items: center; }
   .dg-hud.center { left: 50%; transform: translateX(-50%); }
   .dg-hud.right { right: 24px; }
@@ -364,7 +368,7 @@
     #stage2 .dg-stage { margin-top: 142px; }
     .pc-only { display: none; } .m-only { display: inline; }
     .s2-word, .s2-pad { position: static; width: auto; margin: 12px; } .s2-word { transform: none; }
-    .s2-pad { padding: 12px; } #s2PadCv { margin: 0 auto; width: min(320px, calc(100vw - 60px)); height: 220px; }
+    .s2-pad { padding: 12px; } #s2PadCv { margin: 0 auto; width: 100%; max-width: 320px; box-sizing: border-box; height: 220px; }   /* 跟著卡片寬度，不用視窗寬度算（窄手機不會超出卡片） */
     .s2-cells { min-height: 96px; } .s2-cell .h { font-size: 30px; }
   }
   /* ===== 劇情對話層（轉場、殭屍王台詞、醒來）===== */
@@ -397,6 +401,8 @@
   .vn-name { position: absolute; left: 36px; top: -26px; min-width: 190px; padding: 7px 40px 9px; box-sizing: border-box; text-align: center; color: #fff; font-weight: 900; font-size: clamp(17px, 1.3vw, 22px); letter-spacing: .12em;
     background: linear-gradient(90deg, #8ccaf3, #5fa9e6); transform: rotate(-3deg); clip-path: polygon(0 8%, 100% 0, 98% 100%, 2% 92%); box-shadow: 0 2px 0 #3b86c6; }
   .vn-name[hidden] { display: none; }
+  .vn-name small { font-size: .72em; letter-spacing: 0; font-weight: 800; }
+  @media (max-width: 599px) { .vn-name:has(small) { white-space: nowrap; padding-inline: 18px; letter-spacing: .04em; } }
   .vn-text { color: #2b2b30; font-weight: 800; font-size: clamp(19px, 1.55vw, 28px); line-height: 1.75; white-space: pre-wrap; }
   .vn-next { position: absolute; right: 28px; bottom: 12px; color: #3a3a46; font-size: 14px; animation: vnNext 1s ease-in-out infinite; }
   @keyframes vnNext { 50% { transform: translateY(4px); opacity: .5; } }
@@ -423,6 +429,16 @@
   }
   .dg-story .dg-msg { position: relative; left: auto; bottom: auto; width: min(1100px, 100%); min-height: 150px; }
   .dg-story .dg-msg-text { font-size: clamp(22px, 1.8vw, 32px); }
+  /* 睜眼閉眼（Eyes）：上下兩個長方形眼皮＋模糊；--o＝張開程度 0～1、--b＝模糊。在對話中時放進 #story，蓋住人物、留下對話框 */
+  .eyelids { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; --o: 1; --b: 0px; }
+  .dg-story > .eyelids { position: absolute; z-index: 4; }
+  .dg-story.eyes-on .vn-box { z-index: 5; }
+  .dg-story.eyes-on .vn-hero { z-index: 6; }   /* 對話框和主角留在眼皮上面；主角照平常一樣在對話框前面 */
+  .eyelids .eye-blur { position: absolute; inset: 0; backdrop-filter: blur(var(--b)); -webkit-backdrop-filter: blur(var(--b)); }
+  .eyelids .eye-dim { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 50%, transparent 40%, #000c 100%); opacity: calc(1 - var(--o)); }
+  .eyelids .lid { position: absolute; left: 0; width: 100%; height: 51%; background: #050308; }   /* 上下兩個長方形 */
+  .eyelids .lid.top { top: 0; transform: translateY(calc(var(--o) * -100%)); }
+  .eyelids .lid.bot { bottom: 0; transform: translateY(calc(var(--o) * 100%)); }
   .dg-crack { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 15; pointer-events: none; }   /* SVG 要明寫寬高，直式畫面才會撐滿 */
   .dg-crack path { fill: none; stroke: #e6d8ff; stroke-width: 4; filter: drop-shadow(0 0 6px #9b6dff); stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: crack 1.1s ease-out forwards; }
   @keyframes crack { to { stroke-dashoffset: 0; } }
@@ -438,16 +454,16 @@
   <!-- ===== 前導故事（同穿搭小達人 intro：在說明頁之前）===== -->
   <section class="story-screen" id="intro">
     <header class="lobby-toolbar" aria-label="前導故事工具列">
-      <button class="lobby-back-button" type="button" id="introBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
-      <button class="text-button sound-toggle-btn" type="button" id="introSound" aria-pressed="true" aria-label="音效按鈕，目前開啟，點擊關閉音效"><img class="sound-icon" src="ui/sound-icon.svg" alt="" aria-hidden="true">音效</button>
+      <button class="lobby-back-button" type="button" id="introBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true"><span class="back-label">返回列表</span></button>
+      <button class="text-button sound-toggle-btn" type="button" id="introSound" aria-pressed="true" aria-label="背景音樂按鈕，目前開啟，點擊關閉背景音樂"><img class="sound-icon" src="ui/sound-icon.svg" alt="" aria-hidden="true">音樂</button>
     </header>
     <!-- 對話用共用的 GALGAME 對話框（#story），人物圖在 dream/vn/ -->
   </section>
 
   <section class="lobby-screen" id="lobby" hidden>
     <header class="lobby-toolbar" aria-label="首頁工具列">
-      <button class="lobby-back-button" type="button" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
-      <button class="text-button sound-toggle-btn" type="button" id="soundBtn" aria-pressed="true" aria-label="音效按鈕，目前開啟，點擊關閉音效"><img class="sound-icon" src="ui/sound-icon.svg" alt="" aria-hidden="true">音效</button>
+      <button class="lobby-back-button" type="button" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true"><span class="back-label">返回列表</span></button>
+      <button class="text-button sound-toggle-btn" type="button" id="soundBtn" aria-pressed="true" aria-label="背景音樂按鈕，目前開啟，點擊關閉背景音樂"><img class="sound-icon" src="ui/sound-icon.svg" alt="" aria-hidden="true">音樂</button>
       <button class="text-button lobby-rank-toggle-btn" type="button" id="rankToggle"><span class="star-icon" aria-hidden="true">★</span> 排行榜</button>
     </header>
     <div class="lobby-fu" id="lobbyFu" aria-hidden="true">
@@ -473,7 +489,7 @@
               <h2>聽客語，選回答</h2>
               <strong class="dg-round-points">70 分</strong>
             </header>
-            <p>聽同學說客語，從 3 句客語中選出最合適的回答。</p>
+            <p>聽神秘同學說客語，從 3 句客語中選出最合適的回答。</p>
             <p>共 7 題，答對一題得 10 分，還會收到一張符紙。</p>
           </article>
           <article class="dg-round s2">
@@ -510,14 +526,15 @@
   <section class="dg-screen" id="game" hidden>
     <div class="dg-soft" id="dgSoft"></div>
     <header class="lobby-toolbar game-top-actions" aria-label="遊戲工具列">
-      <button class="lobby-back-button" type="button" id="gameBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
+      <button class="lobby-back-button" type="button" id="gameBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true"><span class="back-label">返回列表</span></button>
+      <button class="text-button sound-toggle-btn" type="button" id="gameSound" aria-pressed="true" aria-label="背景音樂按鈕，目前開啟，點擊關閉背景音樂"><img class="sound-icon" src="ui/sound-icon.svg" alt="" aria-hidden="true">音樂</button>
     </header>
     <div class="dg-hud center"><span class="dg-sign" id="dgSign"></span></div>
     <div class="dg-hud right"><span class="dg-time" id="dgTime">00:00:00.00</span><span class="dg-fu" id="dgFu"><img src="ui/talisman.svg" alt="">符紙 ×<b id="dgFuN">0</b></span></div>
     <div class="dg-stage" id="dgStage"><canvas id="dgScene"></canvas><canvas id="dgSpark"></canvas></div>
     <div class="dg-ui">
       <div class="dg-msg" id="dgMsg">
-        <span class="dg-msg-name" id="dgName">同學</span>
+        <span class="dg-msg-name" id="dgName">神秘同學</span>
         <canvas class="dg-msg-face" id="dgPortrait"></canvas>
         <div class="dg-msg-body">
           <div class="dg-msg-text" id="dgPrompt"></div>
@@ -534,7 +551,8 @@
   <section class="dg-screen" id="stage2" hidden>
     <div class="dg-soft" style="background-image:url(dream/bg2_night_soft.png)"></div>
     <header class="lobby-toolbar game-top-actions" aria-label="遊戲工具列">
-      <button class="lobby-back-button" type="button" id="s2Back" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
+      <button class="lobby-back-button" type="button" id="s2Back" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true"><span class="back-label">返回列表</span></button>
+      <button class="text-button sound-toggle-btn" type="button" id="s2Sound" aria-pressed="true" aria-label="背景音樂按鈕，目前開啟，點擊關閉背景音樂"><img class="sound-icon" src="ui/sound-icon.svg" alt="" aria-hidden="true">音樂</button>
     </header>
     <div class="dg-hud center"><span class="dg-sign" id="s2Sign">第二關・封印殭屍王</span></div>
     <div class="s2-prog">封印進度<span id="s2Prog" style="display:flex;gap:8px"></span></div>
@@ -574,7 +592,7 @@
   <!-- ===== 結算頁（同穿搭小達人 result）===== -->
   <section class="result-screen" id="result" hidden>
     <header class="lobby-toolbar" aria-label="結算頁工具列">
-      <button class="lobby-back-button" type="button" id="resBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true">返回列表</button>
+      <button class="lobby-back-button" type="button" id="resBack" aria-label="返回列表"><img src="ui/back.png" alt="" aria-hidden="true"><span class="back-label">返回列表</span></button>
     </header>
     <article class="result-panel">
       <section class="result-summary-card" tabindex="0">
@@ -625,7 +643,7 @@
 <script src="data.js?v=20261126b"></script>
 <script src="dream/vector-avatar.js?v=5"></script>
 <script src="dream/sfx.js?v=20261125c"></script>
-<script src="dream/bgm.js?v=1"></script>
+<script src="dream/bgm.js?v=3"></script>
 <script src="fireworks_data.js"></script>
 <script src="tone.js"></script>
 <script>
@@ -694,7 +712,7 @@ const SCENES = {
   gate: { name: "校門口", topics: ["校外教學", "夏令營", "認識校園"] },
 };
 const sceneOf = t => Object.keys(SCENES).find(k => SCENES[k].topics.includes(t)) || "classroom";
-const st = { dialect: DIALECTS[0], level: "easy", qs: [], i: 0, score: 0, fu: 0, log: [], scene: null, elapsed: 0, sound: true };
+const st = { dialect: DIALECTS[0], level: "easy", qs: [], i: 0, score: 0, fu: 0, log: [], scene: null, elapsed: 0 };
 // 計時（兩關合計）：只在玩家作答時走；教學、對話、轉場、動畫時暫停。只拿來排名，不扣分。
 const timer = {
   base: 0, seg: 0, on: false,
@@ -965,7 +983,7 @@ function sayLines(lines, talking, k0 = 0, t0 = 0) {
   const go = (k, t) => {
     if (id !== speakId || k >= lines.length) { $("dgReplay").classList.remove("on"); return; }
     const l = lines[k]; if (!l.s) return go(k + 1, 0);
-    audio.src = l.s; audio.muted = !st.sound;
+    audio.src = l.s;
     if (t > 0) audio.addEventListener("loadedmetadata", () => { audio.currentTime = t; }, { once: true });
     $("dgReplay").classList.toggle("on", talking);
     if (onBar) { qbar.k = k; qbar.t = t; paintQBar(); }
@@ -1038,10 +1056,12 @@ function story(beats, opts = {}) {
     let k = 0;
     const el = $("story");
     heroSrc = null; standWho = null;
-    const finish = () => { el.hidden = true; el.onclick = null; removeEventListener("keydown", key); skipStory = null; $("vnSkip").hidden = true; setVnImg($("vnHero"), null); setVnImg($("vnStand"), null); liveStand = false; $("vnLive").hidden = true; done(); };
+    const finish = () => { el.hidden = true; Eyes.place(); el.onclick = null; removeEventListener("keydown", key); skipStory = null; $("vnSkip").hidden = true; setVnImg($("vnHero"), null); setVnImg($("vnStand"), null); liveStand = false; $("vnLive").hidden = true; done(); };
     const showBeat = () => {
       const b = beats[k];
-      $("storyName").textContent = b.who || ""; $("storyName").hidden = !b.who;
+      // 名牌：括號裡的補充（例如「（從符紙裡傳來的聲音）」）字小一點，名牌才不會換行壓到台詞
+      const nm = /^(.+?)（(.+)）$/.exec(b.who || "");
+      $("storyName").innerHTML = nm ? `${esc(nm[1])}<small>（${esc(nm[2])}）</small>` : esc(b.who || ""); $("storyName").hidden = !b.who;
       $("storyText").textContent = b.text;
       // 主角：講話時用這句的表情；別人講話時留在畫面上、壓暗（還沒出場過就不顯示）
       if (b.hero) heroSrc = b.hero;
@@ -1060,7 +1080,7 @@ function story(beats, opts = {}) {
       if (el.hidden) { el.onclick = null; removeEventListener("keydown", key); return; }   // 中途按了「返回列表」：這段對話作廢
       DSFX.page(); k++; if (k < beats.length) showBeat(); else finish(); };
     const key = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); next(); } };
-    el.hidden = false; el.onclick = next; addEventListener("keydown", key);
+    el.hidden = false; Eyes.place(); el.onclick = next; addEventListener("keydown", key);
     $("vnSkip").hidden = !opts.skip;
     skipStory = finish;
     showBeat();
@@ -1073,6 +1093,56 @@ function flickerTo(el, src) {
   el.animate([{ opacity: 1 }, { opacity: .1 }, { opacity: 1 }, { opacity: 0 }, { opacity: 1 }, { opacity: .2 }, { opacity: 1 }], { duration: 650, easing: "steps(7)" });
   setTimeout(() => setVnImg(el, src), 330);
 }
+// 睜眼閉眼（全域特效，第一人稱的眼皮，上下兩個長方形）：都回傳 Promise。目前只用在前導故事「好想睡覺……」
+//   Eyes.close()       想睡：半闔、撐開、又闔，最後閉上（停在全黑）
+//   Eyes.close("fast") 很快閉上
+//   Eyes.open()        被叫醒：模糊中睜開一條縫、又閉上、再睜開、眨一下，最後清楚
+//   Eyes.blink()       眨一下      Eyes.set(0～1) 直接設定張開程度      Eyes.clear() 拿掉
+// 在對話中（#story 顯示時）放在人物上面、對話框下面，閉著眼也看得到字和主角
+const Eyes = (() => {
+  const el = document.createElement("div"); el.className = "eyelids"; el.hidden = true; el.setAttribute("aria-hidden", "true");
+  el.innerHTML = `<div class="eye-blur"></div><div class="eye-dim"></div><div class="lid top"></div><div class="lid bot"></div>`;
+  let o = 1, b = 0, raf = 0, done = null;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const SEQ = {   // [毫秒, 張開程度, 模糊 px]
+    close: [[0], [700, .35, 2], [1000, .6, 2], [1700, .12, 4], [2000, .28, 4], [2800, 0, 6]],
+    fast:  [[0], [450, 0, 5]],
+    open:  [[0], [450, 0, 9], [800, .16, 9], [1050, 0, 8], [1650, .38, 6], [1850, .1, 5], [2050, .5, 4], [2900, 1, 0]],
+    blink: [[0], [90, 0, b], [220, 1, 0]],
+  };
+  function place() {
+    const story = $("story"), inStory = !story.hidden;
+    const parent = inStory ? story : document.body;
+    if (el.parentNode !== parent) parent.appendChild(el);
+    story.classList.toggle("eyes-on", inStory && !el.hidden);
+  }
+  function paint() { el.style.setProperty("--o", o.toFixed(3)); el.style.setProperty("--b", b.toFixed(1) + "px"); el.hidden = o >= 1 && b <= 0; place(); }
+  function run(name) {
+    cancelAnimationFrame(raf); if (done) done();
+    let seq = SEQ[name].map(k => k.slice());
+    seq[0] = [0, o, b];
+    if (reduce.matches) seq = [seq[0], [300, ...seq[seq.length - 1].slice(1)]];   // 減少動態效果：直接淡過去
+    return new Promise(res => {
+      done = res; const t0 = performance.now();
+      const tick = now => {
+        const t = now - t0; let i = 1; while (i < seq.length - 1 && t > seq[i][0]) i++;
+        const [ta, oa, ba] = seq[i - 1], [tb, ob, bb] = seq[i];
+        const u = Math.min(1, Math.max(0, (t - ta) / (tb - ta))), e = u * u * (3 - 2 * u);   // 緩進緩出
+        o = oa + (ob - oa) * e; b = ba + (bb - ba) * e; paint();
+        if (t < seq[seq.length - 1][0]) raf = requestAnimationFrame(tick); else { done = null; res(); }
+      };
+      raf = requestAnimationFrame(tick);
+    });
+  }
+  return {
+    close: (mode) => run(mode === "fast" ? "fast" : "close"),
+    open: () => run("open"),
+    blink: () => run("blink"),
+    set(v, blur = v < 1 ? 6 : 0) { cancelAnimationFrame(raf); if (done) { done(); done = null; } o = v; b = blur; paint(); },
+    clear() { this.set(1, 0); },
+    place,
+  };
+})();
 // 夢境裂開的特效
 function crackFx() {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -1094,13 +1164,14 @@ function chipRow(el, items, cur, onPick) {
 chipRow($("dialects"), DIALECTS.map(d => [d, d]), st.dialect, d => st.dialect = d);
 // 難度：說明頁不放選單（版面同穿搭小達人），先用網址參數 ?level=easy|mid|hard
 const qLevel = new URLSearchParams(location.search).get("level"); if (LEVELS[qLevel]) st.level = qLevel;
-// 聲音開關：語音、音效、背景音樂一起開關；上次關掉的話（DSFX 記在 localStorage）這次也是關的
-function setSound(on) {
-  st.sound = on; audio.muted = !on; DSFX.setMuted(!on); BGM.setMuted(!on);
-  for (const b of [$("soundBtn"), $("introSound")]) { b.setAttribute("aria-pressed", st.sound); b.setAttribute("aria-label", `音效按鈕，目前${st.sound ? "開啟" : "關閉"}，點擊${st.sound ? "關閉" : "開啟"}音效`); b.querySelector("img").src = st.sound ? "ui/sound-icon.svg" : "ui/sound-off-icon.svg"; }
+// 音樂按鈕：只開關背景音樂（記在 localStorage）；題目語音和音效一律照常播放
+function setMusic(on) {
+  BGM.setMuted(!on);
+  for (const b of document.querySelectorAll(".sound-toggle-btn")) { b.setAttribute("aria-pressed", on); b.setAttribute("aria-label", `背景音樂按鈕，目前${on ? "開啟" : "關閉"}，點擊${on ? "關閉" : "開啟"}背景音樂`); b.querySelector("img").src = on ? "ui/sound-icon.svg" : "ui/sound-off-icon.svg"; }
 }
-$("soundBtn").onclick = $("introSound").onclick = () => setSound(!st.sound);
-setSound(!DSFX.muted);
+for (const b of document.querySelectorAll(".sound-toggle-btn")) b.onclick = () => setMusic(BGM.muted);   // 故事、說明頁、第一關、第二關各一個，同步
+setMusic(!BGM.muted);
+DSFX.setMuted(false);   // 舊版的聲音按鈕會把音效也關掉並記下來，這裡清掉
 $("rankToggle").onclick = () => { $("rankModal").hidden = false; };
 $("rankClose").onclick = $("rankClose2").onclick = () => { $("rankModal").hidden = true; };
 $("rankModal").onclick = e => { if (e.target === $("rankModal")) $("rankModal").hidden = true; };
@@ -1212,8 +1283,8 @@ const VN = {
 // 前導故事（劇本「▼前導故事」）
 const PROLOGUE = [
   { who: "你", hero: VN.heroSleepy, stand: null, text: "今天天氣真暖" },                                  // 快睡著
-  { who: "你", hero: VN.heroClosed, text: "好想睡覺……" },                                                // 眼睛閉起來
-  { who: "神秘同學", stand: VN.mysteryPx, text: "怎麼會有人類在這裡，嗯嗯……你看起來有很會客語呢。" },
+  { who: "你", hero: VN.heroClosed, text: "好想睡覺……", fx: () => Eyes.close() },                       // 眼睛閉起來（眼皮慢慢闔上）
+  { who: "神秘同學", stand: VN.mysteryPx, fx: () => Eyes.clear(), text: "怎麼會有人類在這裡，嗯嗯……你看起來有很會客語呢。" },
   { who: "你", hero: VN.heroOpen, text: "你是誰？" },                                                     // 眼睛睜開
   { who: "神秘同學", text: "如何破除這夢境，就要看看你的能力了。" },
   { who: "神秘同學", text: "這裡有七層夢境，依照情境回答正確句子吧！小心不要說錯話，被殭屍們發現。" },
@@ -1234,6 +1305,7 @@ async function playIntro() {
   $("introBack").hidden = false;
   show("intro");
   await story(PROLOGUE, { skip: true });
+  Eyes.clear();   // 閉著眼時按了跳過
   if (!$("intro").hidden) show("lobby");
 }
 $("introBack").onclick = () => { if (skipStory) skipStory(); };
@@ -1245,7 +1317,7 @@ function renderQ() {
   if (st.i > 0) { $("dgStage").classList.remove("dream"); void $("dgStage").offsetWidth; $("dgStage").classList.add("dream"); }
   setTimeout(() => { st.scene = sc; $("dgSoft").style.backgroundImage = `url(${BG[sc].soft || BG[sc].img.src})`; }, st.i === 0 ? 0 : 360);
   $("dgSign").textContent = `夢境・${SCENES[sc].name}・第 ${st.i + 1} / ${ROUND} 題`;
-  $("dgPrompt").innerHTML = `<span class="dim">${item.ctx.length ? "（先聽前一句對話，再聽同學問你……）" : "（同學好像有話要跟你說……）"}</span>`;
+  $("dgPrompt").innerHTML = `<span class="dim">${item.ctx.length ? "（先聽前一句對話，再聽神秘同學問你……）" : "（神秘同學好像有話要跟你說……）"}</span>`;
   $("dgCue").hidden = true;
   $("dgNext").hidden = true;
   av.setExpression("neutral"); av.play("idle");
@@ -1292,7 +1364,7 @@ function answer(n) {
   cur.opts.forEach(o => { o.el.classList.add("done"); if (o.right) o.el.classList.add("ok"); else if (o === chosen) o.el.classList.add("bad"); });
   const it = cur.item;
   // 遊戲中不顯示題目文字與華語意思（最後成績頁才顯示），只用旁白描述同學的反應
-  $("dgPrompt").innerHTML = `<span class="dim">${right ? "（同學笑著點點頭。）" : "（同學歪著頭，好像聽不太懂……）"}</span>`;
+  $("dgPrompt").innerHTML = `<span class="dim">${right ? "（神秘同學笑著點點頭。）" : "（神秘同學歪著頭，好像聽不太懂……）"}</span>`;
   $("dgCue").hidden = false;
   // 選項上方不放對錯提示：對錯看選項的綠／紅框、符紙、音效和同學的反應
   if (right) { DSFX.correct(); av.setExpression("smile"); av.play("mb_wave"); glowT0 = performance.now(); setTimeout(dropPaper, 450); }
@@ -1310,7 +1382,7 @@ const RESULT_TIERS = {
   5: { title: "夢境驅魔大師", comment: "七層夢境一層都沒漏，連殭屍王都乖乖搬走！你的耳朵和聲調都是全場最強。" },
   4: { title: "金符驅魔師", comment: "聽得懂、畫得準，大部分的殭屍都被你一張符就搞定，再多練一點就是大師了！" },
   3: { title: "見習驅魔師", comment: "夢境的對話難不倒你！把聲調畫得再準一點，符紙會更有力。" },
-  2: { title: "符紙小學徒", comment: "多聽幾次同學說的話，畫聲調時跟著唸唸看，下次一定更順手。" },
+  2: { title: "符紙小學徒", comment: "多聽幾次神秘同學說的話，畫聲調時跟著唸唸看，下次一定更順手。" },
   1: { title: "迷路的夢遊者", comment: "這次在夢裡繞了好一陣子，別灰心，再睡一覺、再闖一次吧！" },
 };
 function starOf(rank, people, total) {
@@ -1358,7 +1430,7 @@ function renderResult(played) {
 // 成績頁：題目、答案、詞旁邊的喇叭按鈕
 $("resReview").addEventListener("click", e => {
   const b = e.target.closest(".rv-say"); if (!b) return;
-  speakId++; audio.pause(); audio.src = b.dataset.s; audio.muted = !st.sound; audio.play().catch(() => {});
+  speakId++; audio.pause(); audio.src = b.dataset.s; audio.play().catch(() => {});
   document.querySelectorAll(".rv-say.on").forEach(x => x.classList.remove("on")); b.classList.add("on");
   audio.onended = () => b.classList.remove("on");
 });
@@ -1375,7 +1447,7 @@ async function finish() {
       fx: () => { DSFX.paper(); av2.setExpression("troubled"); av2.play("kimodo_nod_surprise"); } },   // 說話的是大的神秘同學（跟場景裡冒紫氣的不是同一個）
     { who: "", text: "（四周的教室開始一塊一塊地裂開……）", fx: () => { crack = crackFx(); } },
     { who: "？？？", stand: VN.bossShadow, center: true, shadow: true, text: "是誰，擾我清夢！", fx: () => { BGM.stop(1.5); DSFX.vortex(); const v = document.createElement("div"); v.className = "dg-vortex"; document.body.appendChild(v); setTimeout(() => v.remove(), 1500); } },
-  ]);
+  ], { skip: true });   // 可跳過（刷榜時不用一句一句點）
   await swirlAway(crack);
   if (crack) crack.remove();
   show("stage2");
@@ -1402,7 +1474,7 @@ async function ending() {
   await story([
     { who: "貪睡殭屍王", text: "哎喲……好啦我錯了，我去別處找地方睡……", fx: () => DSFX.cancel() },
     { who: "", text: "（符紙發出金光，把裂開的夢一片一片補了回去。）", fx: () => { DSFX.fanfare(); DSFX.flash("#fff2b0", 700); } },
-  ]);
+  ], { skip: true });
   // 醒來：脫離夢境，回到原本（非像素）的教室，主角和同學都是原本的插畫
   DSFX.flash("#ffffff", 900); DSFX.wake();
   $("introBack").hidden = true;
@@ -1411,7 +1483,7 @@ async function ending() {
     { who: "同學", stand: VN.mateWave, mcenter: true, text: "欸，起床了啦！鐘都響了。" },
     { who: "同學", stand: VN.mateThink, mcenter: true, text: "你剛剛睡覺手一直在空中比來比去欸，在幹嘛？" },
     { who: "你", hero: VN.heroLaugh, text: "我去驅魔了。" },   // 動作：看著手上的符紙，大笑（hero_laugh 圖）
-  ]);
+  ], { skip: true });
   st.score2 = S2.score();
   st.elapsed = timer.get();
   const total = Math.round((st.score + st.score2) * 100) / 100;
@@ -1455,6 +1527,6 @@ function prepAvatar(a) {
   $("startBtn").disabled = false; $("startBtn").textContent = "進入夢境";
 })();
 </script>
-<script src="dream/stage2.js?v=20261126a"></script>
+<script src="dream/stage2.js?v=20261127a"></script>
 </body>
 </html>

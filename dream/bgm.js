@@ -1,17 +1,19 @@
-// 背景音樂（Web Audio 即時合成，自己寫的曲子，沒有音檔、沒有授權問題）。
-// 三首（另外殭屍王出場後換成加強版）：
+// 背景音樂（Web Audio）。入口、第一關是即時合成的原創曲（沒有音檔）；第二關用魔王魂的曲子（音檔）。
+//   魔王魂 https://maou.audio/ ：商用、改編都可以，不用申請；禁止轉發音檔本身、用 AI 改編。表記「音楽：魔王魂」（非必要）
+// 曲目：
 //   lobby  ：前導故事、說明頁、醒來、成績頁——午後教室，慢、暖、有點想睡（D 大調五聲音階，lo-fi 搖擺）
 //   stage1 ：第一關夢境——神秘、飄，旋律很少，讓出空間給客語語音（A 小調五聲音階，鈴聲琶音＋長音）
-//   stage2 ：第二關殭屍——緊張、往前推（D 小調，八分音符低音＋鼓）
-//   boss   ：殭屍王出場後——stage2 加快、加鼓、加長音
-// 用法：BGM.play("lobby")（同一首不會重來；換曲會交叉淡入淡出）、BGM.stop(秒)、BGM.setMuted(bool)
+//   stage2 ：第二關殭屍——魔王魂「bravery heart 8bit版」（8bit25）ループ版 dream/bgm/maou_loop_bgm_8bit25.mp3
+//   boss   ：殭屍王出場後——同一首加快 10%
+// 用法：BGM.play("lobby")（同一首不會重來；換曲會交叉淡入淡出）、BGM.stop(秒)、BGM.setMuted(bool)（記在 localStorage）
 // 客語語音（任何 <audio>／new Audio() 播放）時自動把音樂壓小，播完再回來。
 // 瀏覽器規定要使用者先點一下才能出聲，所以第一次點擊／按鍵後才真正開始。
 (function () {
-  const VOL = 0.2, DUCK = 0.3;               // 整體音量；語音播放時壓到 30%
-  let ac = null, out = null, bus = null, delayIn = null, noiseBuf = null;
+  const VOL = 0.12, DUCK = 0.2;              // 整體音量；語音播放時壓到 20%
+  let ac = null, out = null, bus = null, delayIn = null, noiseBuf = null, meter = null;
   let muted = false, want = null, cur = null;
-  try { muted = localStorage.getItem("dream-muted") === "1"; } catch (e) {}
+  const KEY = "dream-music-off";
+  try { muted = localStorage.getItem(KEY) === "1"; } catch (e) {}
 
   // ---------- 曲子 ----------
   // 每小節 8 格（八分音符）。音符寫法：D5、F#4、Bb3；「-」延長前一個音；「.」休止
@@ -33,21 +35,10 @@
       bass: "R - - - O - - -", arp: "0 1 2 3 4 3 2 1",
       hat: ". . . h . . . h",
     },
-    stage2: {
-      bpm: 128, swing: 0, lead: "sq", padInst: "darkpad", bassInst: "bassSq", echo: .18,
-      chords: ["D3 F3 A3", "D3 F3 A3", "Bb2 D3 F3", "A2 C#3 E3"],
-      mel: `D5 - F5 - G5 - A5 -   C6 - A5 - G5 - F5 -   F5 - G5 - A5 - - -   A5 - - - E5 - C#5 -
-            D6 - C6 - A5 - G5 -  A5 - F5 - G5 - D5 -   F5 - D5 - F5 - G5 -   A5 - - - . . . .`,
-      bass: "R O R O R O R O",
-      kick: "x . . . x . . .", snare: ". . x . . . x .", hat: ". h . h . h . h",
-    },
   };
-  // 殭屍王：stage2 加快、鼓更密、旋律換成鋸齒波
-  TRACKS.boss = Object.assign({}, TRACKS.stage2, {
-    bpm: 140, lead: "saw", padInst: "darkpad",
-    kick: "x . . x x . . .", snare: ". . x . . . x x", hat: "x h x h x h x h", hat16: true,
-    comp: "c . . c . . c .",
-  });
+  // 音檔曲：file＝路徑，gain＝和合成曲對齊音量用（音檔本身很大聲），rate＝播放速度（也會變高音）
+  TRACKS.stage2 = { file: "dream/bgm/maou_loop_bgm_8bit25.mp3", gain: 0.5, rate: 1 };
+  TRACKS.boss = Object.assign({}, TRACKS.stage2, { rate: 1.1 });
 
   // ---------- 解析 ----------
   const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -55,6 +46,7 @@
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
   const toks = s => (s || "").trim().split(/\s+/).filter(Boolean);
   for (const T of Object.values(TRACKS)) {
+    if (T.file) continue;
     T._chords = T.chords.map(c => c.split(" ").map(midi));
     T._mel = toks(T.mel);
     T.bars = T._mel.length / 8;
@@ -69,6 +61,7 @@
     out = ac.createGain(); out.gain.value = muted ? 0 : VOL;
     const comp = ac.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3;
     out.connect(comp).connect(ac.destination);
+    meter = ac.createAnalyser(); meter.fftSize = 2048; comp.connect(meter);
     bus = ac.createGain(); bus.connect(out);
     // 回音（夢的感覺）：送進來的音隔一下重複幾次
     delayIn = ac.createGain();
@@ -77,7 +70,23 @@
     delayIn.connect(d); d.connect(lp).connect(fb).connect(d); lp.connect(bus);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    for (const T of Object.values(TRACKS)) if (T.file) load(T).catch(() => {});   // 先下載，進第二關時就不用等
     return ac;
+  }
+  // 音檔：下載、解碼一次；找出頭尾的靜音（mp3 編碼會補空白），重複播放時跳過，接縫才不會頓一下
+  const files = {};   // 同一個檔案只下載一次（stage2、boss 共用）
+  function load(T) {
+    if (!files[T.file]) files[T.file] = fetch(T.file).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(b => new Promise((ok, ng) => ac.decodeAudioData(b, ok, ng)))
+      .then(buf => {
+        const d = buf.getChannelData(0); let a = 0, z = d.length - 1;
+        while (a < d.length && Math.abs(d[a]) < 1e-4) a++;
+        while (z > a && Math.abs(d[z]) < 1e-4) z--;
+        buf._loop = [a / buf.sampleRate, (z + 1) / buf.sampleRate];
+        return buf;
+      })
+      .catch(e => { delete files[T.file]; throw e; });
+    return files[T.file];
   }
   function env(g, t, a, peak, dur, rel) {   // 線性起音、維持、指數收尾
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a);
@@ -180,14 +189,26 @@
   function startTrack(name) {
     const T = TRACKS[name]; if (!T || !ctx()) return;
     const g = ac.createGain(), t = ac.currentTime;
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 1.2); g.connect(bus);
+    g.gain.setValueAtTime(0, t); g.connect(bus);
     const p = { name, T, g, i: 0, next: t + .08 };
-    p.timer = setInterval(() => pump(p), 25); pump(p);
     cur = p;
+    if (T.file) {
+      load(T).then(buf => {
+        if (cur !== p) return;           // 下載完之前已經換曲或停了
+        const t0 = ac.currentTime + .03, s = ac.createBufferSource(), tg = ac.createGain();
+        s.buffer = buf; s.loop = true; s.loopStart = buf._loop[0]; s.loopEnd = buf._loop[1]; s.playbackRate.value = T.rate || 1;
+        tg.gain.value = T.gain; s.connect(tg).connect(g); s.start(t0, buf._loop[0]); p.src = s;
+        g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(1, t0 + .6);
+      }).catch(() => {});
+      return;
+    }
+    g.gain.linearRampToValueAtTime(1, t + 1.2);
+    p.timer = setInterval(() => pump(p), 25); pump(p);
   }
   function fadeOut(p, sec) {
     if (!p) return; clearInterval(p.timer);
     const t = ac.currentTime; p.g.gain.cancelScheduledValues(t); p.g.gain.setValueAtTime(p.g.gain.value, t); p.g.gain.linearRampToValueAtTime(0, t + sec);
+    if (p.src) p.src.stop(t + sec + .05);
     setTimeout(() => p.g.disconnect(), sec * 1000 + 2500);   // 等已排好的音放完
   }
 
@@ -232,7 +253,10 @@
       fadeOut(cur, 1.2); cur = null; startTrack(name);
     },
     stop(sec = 1.2) { want = null; if (ac && cur) { fadeOut(cur, sec); cur = null; } },
-    setMuted(m) { muted = m; applyVol(); },
+    setMuted(m) { muted = m; try { localStorage.setItem(KEY, m ? "1" : "0"); } catch (e) {} applyVol(); },
+    get muted() { return muted; },
+    // 除錯：目前輸出的音量（dBFS，RMS，約 46ms）
+    level() { if (!meter) return -Infinity; const a = new Float32Array(meter.fftSize); meter.getFloatTimeDomainData(a); let s = 0; for (const v of a) s += v * v; return 10 * Math.log10(s / a.length + 1e-12); },
     get current() { return cur && cur.name; },
     tracks: Object.keys(TRACKS),
   };
