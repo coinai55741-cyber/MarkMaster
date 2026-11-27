@@ -792,7 +792,7 @@ const timer = {
 };
 function buildRound() {
   const bank = QUIZ[st.dialect];
-  const selected = [], seen = new Set();
+  const byScene = new Map(Object.keys(SCENES).map(scene => [scene, []]));
   for (const item of shuffle(bank)) {
     const prompt = item.q.h.normalize("NFC").replace(/[\s\p{P}]+/gu, "");
     const audio = item.q.s?.trim();
@@ -800,12 +800,27 @@ function buildRound() {
     if (item.id != null) keys.push("id:" + item.id);
     if (prompt) keys.push("prompt:" + prompt);
     if (audio) keys.push("audio:" + audio);
-    if (keys.some(key => seen.has(key))) continue;
-    keys.forEach(key => seen.add(key));
-    selected.push(item);
-    if (selected.length === ROUND) break;
+    byScene.get(sceneOf(item.topic)).push({ item, keys });
   }
-  return selected.map(item => {
+  const pools = [...byScene.values()].sort((a, b) => a.length - b.length);
+  if (pools.some(pool => !pool.length)) return [];
+
+  // 同一題若被歸在兩個場景，改從該場景的其他題目選，避免抽少一景。
+  const selected = [], seen = new Set();
+  function pickScene(index) {
+    if (index === pools.length) return true;
+    for (const { item, keys } of pools[index]) {
+      if (keys.some(key => seen.has(key))) continue;
+      keys.forEach(key => seen.add(key));
+      selected.push(item);
+      if (pickScene(index + 1)) return true;
+      selected.pop();
+      keys.forEach(key => seen.delete(key));
+    }
+    return false;
+  }
+  if (!pickScene(0)) return [];
+  return shuffle(selected).map(item => {
     const far = [...new Map(bank.filter(x => x.decoy && x.topic !== item.topic && x.a.h !== item.a.h).map(x => [x.a.h, x.a])).values()];   // 同一句答句（例如 108、110 共用）只算一次
     const wrong = st.level === "hard" ? item.near.slice() : st.level === "mid" ? [pick(item.near, 1)[0], pick(far, 1)[0]] : pick(far, 2);
     return { item, opts: shuffle([{ ...item.a, right: true }, ...wrong.map(w => ({ ...w, right: false }))]) };
@@ -1377,7 +1392,7 @@ const PROLOGUE = [
 function start() {
   const qs = buildRound();
   if (qs.length < ROUND) {
-    window.alert("這個腔調的題庫目前不足 " + ROUND + " 道不同的題目。");
+    window.alert("這個腔調目前無法從七個場景各抽一題。");
     return;
   }
   Object.assign(st, { qs, i: 0, score: 0, fu: 0, log: [], scene: null, elapsed: 0 });
