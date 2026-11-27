@@ -16,6 +16,7 @@
 !/make_ui_assets.py
 !/gen_ui_mock.py
 !/make_vn.py
+!/make_tier_art.py
 !/tone.js
 !/data.js
 !/data/

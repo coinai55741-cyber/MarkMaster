@@ -14,7 +14,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 SRC = {
     "hero_sleepy": "ui_hero_sleepy_01.png", "hero_closed": "ui_hero_closed_01.png", "hero_open": "ui_hero_open_01.png",
     "hero_surprised": "ui_hero_surprised_01.png", "hero_laugh": "ui_hero_laugh_01.png",
-    "mate_wave": "ui_classmate_design_01.png", "mate_think": "ui_mate_think_01.png",
+    "mate_think": "ui_mate_think3_01.png",   # 醒來的同學（白領）：mate_wave.webp 是手動改的（使用者的圖＋白領、小白扣），不從這裡產生
 }
 PIXEL = {}   # 像素版：來源、像素高度（目前沒用到）
 # 神秘同學：直接用遊戲第一關同學的像素圖（從遊戲匯出的 dream/gen/ref_mate_px_smile.png，頭身比例和畫法都一樣）

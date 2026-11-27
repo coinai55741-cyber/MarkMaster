@@ -153,6 +153,81 @@ MOCKS["boss_king"] = (
     "BACKGROUND: one flat solid pure magenta colour #FF00FF everywhere, no shadow on the ground, no floor, no scenery, no text, "
     "no watermark, no border.")
 
+# 成績頁的通關圖（5 個星等各一張）：正方形、插畫風（同醒來的立繪），主角＝hero_design_02，殭屍參考第二關的殭屍王／小殭屍
+_TIER = ("Square result-screen badge illustration for a Taiwanese educational game for elementary school kids. Clean soft anime "
+         "illustration, the same art style as the attached protagonist reference: crisp clean lineart, soft cel shading with gentle "
+         "gradients, warm lighting, NOT pixel art. Centred composition, everything fits inside the square with a small margin, the "
+         "protagonist from the waist up or full body as described, big and readable as a small icon. Kid-friendly, funny and warm, "
+         "never scary. No text, no letters, no numbers, no logos, no flags or national symbols. "
+         "PROTAGONIST: exactly the same kid as the FIRST attached reference (messy dark-brown hair with a small cowlick, brown eyes, white "
+         "short-sleeve school shirt with a chest pocket, navy shorts). "
+         "ZOMBIES (if any): cute chibi Chinese hopping jiangshi in the same anime illustration style, designed after the SECOND attached "
+         "reference (the Sleepy Jiangshi King: mint-green skin, sleepy half-closed eyes, small cute fangs, tall Qing official hat, purple "
+         "robe with gold trim); small zombies wear a simpler teal robe and a small hat. Talismans are tall yellow paper strips with red "
+         "brush strokes. "
+         "BACKGROUND: one flat solid pure magenta colour #FF00FF everywhere, no shadow, no floor, no scenery, no border. ")
+MOCKS["tier5"] = _TIER + (
+    "SCENE (5 stars, 'Dream Exorcism Master', total victory): the protagonist stands proudly with one foot resting on the back of the "
+    "Sleepy Jiangshi King, who lies flat on his belly begging for mercy, a yellow talisman stuck on his forehead, waving a small plain "
+    "white cloth (no symbol on it). The protagonist raises a glowing golden talisman high in one hand and makes a V sign with the other, "
+    "laughing confidently with one eye winked. Two small zombies at the side clap their hands. Golden light rays burst behind the "
+    "protagonist and exactly seven small talismans float around in a circle.")
+MOCKS["tier4"] = _TIER + (
+    "SCENE (4 stars, 'Golden Talisman Exorcist', cool and skilled): the protagonist in a dynamic side pose, flicking a golden talisman "
+    "forward held between two fingers, serious face with a small confident smile. A golden light trail follows the flying talisman, "
+    "which hits the forehead of ONE small zombie in front; the zombie is frozen stiff in place with a surprised '!' mark above its head. "
+    "No king in this picture.")
+MOCKS["tier3"] = _TIER + (
+    "SCENE (3 stars, 'Apprentice Exorcist', studying): the protagonist holds a yellow talisman in one hand and puts the other hand on "
+    "the chin, looking closely at a wavy pitch line drawn on the talisman, part of the line drawn a little crooked in faint red; a small "
+    "light bulb glows above the head; confident but thinking. Behind the protagonist, one small zombie peeks out, its forehead "
+    "talisman stuck on crooked and only half attached, flapping.")
+MOCKS["tier2"] = _TIER + (
+    "SCENE (2 stars, 'Talisman Apprentice', practising): the protagonist holds a thick stack of talismans, mouth open as if reading "
+    "aloud, tracing a line in the air with one finger, focused and a bit nervous with one sweat drop. A tiny version of the mysterious "
+    "classmate from the THIRD attached reference (chibi kid with spiky black hair, white shirt with navy collar, green backpack) sits "
+    "on the protagonist's shoulder, pointing at the talismans and teaching. Small musical notes and little up and down tone marks float "
+    "near the mouth. No zombies.")
+MOCKS["tier1"] = _TIER + (
+    "SCENE (1 star, 'Lost Sleepwalker', funny and cute): the protagonist in light blue pyjamas and a floppy nightcap, eyes closed, "
+    "both arms stretched forward, sleepwalking while hugging a pillow under one arm; 'Zzz' bubbles and a small spinning question mark "
+    "above the head. Behind, one small cute zombie also sleepwalks with arms stretched forward, yawning. A dotted line loops in a "
+    "circle under their feet showing they are walking round and round. No glow, sleepy soft mood.")
+for _k in ("tier5", "tier4", "tier3", "tier2", "tier1"):
+    SIZES[_k] = "1024x1024"
+    REFS[_k] = ["dream/gen/ui_hero_design_02.png", "dream/gen/ui_boss_king_01.png"] + (["dream/gen/ref_mate_px_smile.png"] if _k == "tier2" else [])
+
+# （mate_wave2／mate_think2 與舊的 classmate_design、mate_think 的圖已移到 MarkMaster/dummy/codex_unused/classmate/，沒有用到）
+# 醒來的同學是現實的學生：制服領子改成和主角一樣的白色襯衫領（像素的神秘同學是幽靈，保留藍領當特徵，不改）
+_MATE_REAL = ("exactly the same classmate as the FIRST attached reference picture (same face, spiky black hair with bangs, green backpack "
+              "straps on both shoulders, navy shorts, white socks, black shoes, same art style), EXCEPT the school shirt: make it the same "
+              "plain white short-sleeve school shirt as the protagonist in the SECOND attached reference (an all-white pointed shirt collar, "
+              "white buttons, a chest pocket, NO navy collar, no coloured trim). ")
+MOCKS["mate_wave2"] = _VN + ("CHARACTER: " + _MATE_REAL + "Full body, standing, front view facing slightly left, friendly happy smile, one hand "
+                             "waving, same pose and framing as the first reference. " + _BG_MAG)
+MOCKS["mate_think2"] = _VN + ("CHARACTER: exactly the same classmate as the attached reference picture (same face, hair, white shirt with an "
+                              "all-white collar, green backpack straps, navy shorts, white socks, black shoes), same art style, full body, "
+                              "standing, same front view facing slightly left, same size and framing. EXPRESSION: amused curious smile with "
+                              "the mouth closed, head tilted, one finger on the chin, wondering what you were doing. Clean flat cel shading on "
+                              "the cheeks (no hatching lines, no grid or mesh texture anywhere). " + _BG_MAG)
+for _k in ("mate_wave2", "mate_think2"):
+    SIZES[_k] = "1024x1536"
+REFS["mate_wave2"] = ["dream/gen/ui_classmate_design_01.png", "dream/gen/ui_hero_design_02.png"]
+REFS["mate_think2"] = ["dream/gen/ui_mate_wave2_01.png"]
+
+# 托下巴（第 3 版）：直接用使用者給的乾淨揮手圖（白領、門襟小白扣，dream/gen/mate_wave_white.png）當唯一參考，只算一次，避免接力修圖累積雜點
+MOCKS["mate_think3"] = _VN + (
+    "CHARACTER: exactly the same classmate as the attached reference picture, redrawn with the SAME face, the SAME spiky black hair with "
+    "bangs, the SAME outfit (plain white short-sleeve school shirt with an all-white collar, a thin button placket with small white buttons, "
+    "green backpack straps on both shoulders, navy shorts, white socks, black shoes), the SAME clean soft anime art style and line weight, "
+    "the SAME size, scale and position on the canvas, full body, standing, front view facing slightly left. "
+    "Change ONLY the pose and expression: the waving hand comes down and one index finger rests lightly on the chin, head tilted slightly, "
+    "an amused curious closed-mouth smile, as if wondering what you were doing just now; the other arm relaxed at the side. "
+    "Smooth clean flat cel shading, no hatching, no noise, no grain, no grid or mesh texture anywhere. "
+    "BACKGROUND: one flat solid pure magenta colour #FF00FF everywhere, no shadow on the ground, no floor, no scenery, no border, no text.")
+SIZES["mate_think3"] = "1024x1536"
+REFS["mate_think3"] = ["dream/gen/mate_wave_white.png"]
+
 
 def codex_path():
     p = os.environ.get("PATH", "")
@@ -167,7 +242,7 @@ def gen(name):
     lines = ["Use the imagegen skill with the built-in image_gen tool (do not use the CLI fallback, do not draw the image with code).",
              f"Make exactly 1 image_gen call, size {SIZES.get(name, '1536x1024')}, with the PROMPT below passed verbatim.",
              f"After it finishes, copy the generated PNG from $CODEX_HOME/generated_images/ to {out} and reply with that path only.",
-             *(["The attached image is the character reference: keep the same character design (pass it to image_gen as a reference image if the tool supports it)."] if REFS.get(name) else []),
+             *([f"The {len(REFS[name])} attached image(s) are character references in the order the PROMPT mentions them: keep the same character designs (pass them to image_gen as reference images if the tool supports it)."] if REFS.get(name) else []),
              "PROMPT:", MOCKS[name]]
     env = dict(os.environ, PATH=codex_path())
     cmd = [shutil.which("codex", path=env["PATH"]) or "codex", "exec", "--skip-git-repo-check",

@@ -50,7 +50,7 @@ python -m http.server 8766
 | `dream/bg2_*.png` | 7 個夢境場景背景（320×180 像素格） |
 | `dream/lobby_bg.webp`、`dream/result_bg.webp` | 說明頁、成績頁背景（原圖） |
 | `dream/zombie.png`、`dream/boss.png` 等 | 第二關殭屍、殭屍王圖 |
-| `ui/` | 按鈕、獎牌、符紙等介面圖 |
+| `ui/` | 按鈕、獎牌、符紙等介面圖；`result_tier1～5.png` 是成績頁依星等顯示的通關圖 |
 | `tone.js` | 聲調調值、變調、畫線評分 |
 | `data.js` | 第一關題庫（由 `build_data.py` 產生） |
 | `audio/<腔>/` | 第一關語音 MP3（由 `fetch_audio.py` 下載） |
@@ -68,7 +68,8 @@ python -m http.server 8766
 | `build_fireworks_data.py` | 產生第二關詞庫 |
 | `gen_ui_mock.py` | 用 Codex 生圖（背景、角色、立繪），原圖存在 `dream/gen/`（不進版本控制） |
 | `snap_bg.py`、`make_dream_bg.py`、`gen_warm_bg.py` | 背景轉成像素格 |
-| `make_vn.py` | 立繪去背、轉像素版（注意：`dream/vn/mate_think.webp` 是手動做的差分圖——臉用 `mate_wave` 的、手托下巴，重跑會被 Codex 原圖蓋掉） |
+| `make_vn.py` | 立繪去背、轉像素版。醒來的同學是現實學生：白色襯衫領、門襟小白扣（同主角）；像素的神秘同學是幽靈，保留藍領當特徵。`dream/vn/mate_wave.webp` 是手動改的（`dream/gen/mate_wave_matched.png` 改領子和鈕扣 → `dream/gen/mate_wave_white.png`），`mate_think` 由它當唯一參考生一次（`dream/gen/ui_mate_think3_01.png`），不要接力重算，會累積雜點。沒用到的同學圖在 `MarkMaster/dummy/codex_unused/classmate/` |
+| `make_tier_art.py` | 成績頁通關圖：Codex 原圖（`dream/gen/ui_tier1～5_01.png`）去背，疊到第二關夜晚校園背景，存成 `ui/result_tier1～5.png`（1024×1024） |
 | `make_ui_assets.py` | 介面圖 |
 
 ## 給接手工程師

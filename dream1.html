@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>午休驅魔記｜原型</title>
+<title>午休驅魔記</title>
 <!-- 說明頁、腔調選擇、排行榜、結算頁：直接沿用「穿搭小達人」(fukuchange_v2) 編譯後的樣式，畫面結構與 class 名稱一致 -->
 <link rel="stylesheet" href="dream/lobby.css">
 <style>
@@ -200,6 +200,10 @@
   .rv-say.on { background: #f2c14e; color: #4c355c; } .rv-say:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
   .m-only { display: none; }   /* 手機版才顯示的字（例如「下面」），在手機的 @media 裡打開 */
   .result-ranking-note { width: 100% !important; max-width: none !important; align-self: stretch !important; box-sizing: border-box !important; }   /* 排行榜注意事項：左右滿版 */
+  /* 成績頁通關圖（正方形）：原本留的位置放大一倍（電腦 170→340、手機 130→260） */
+  .result-avatar-placeholder { width: 340px !important; height: 340px !important; margin: .6rem auto !important; }
+  .result-avatar-placeholder img { width: 100%; height: 100%; object-fit: cover; border-radius: 18px; box-shadow: 0 4px 0 #4c355c33; }
+  @media (max-width: 767px) { .result-avatar-placeholder { width: min(260px, 72vw) !important; height: min(260px, 72vw) !important; } }
   .lobby-back-button { background: #fff !important; }   /* 返回列表：底色不透明（原本 #ffffffab 半透明） */
   /* 手機（直式或橫式）：返回列表只留圖示，讓出位置給「音樂」按鈕（按鈕本身有 aria-label） */
   @media (max-width: 599px), (max-height: 500px) { .lobby-back-button .back-label { display: none; } .lobby-back-button { min-width: 0 !important; width: auto !important; padding-inline: 12px !important; gap: 0 !important; } }
@@ -433,7 +437,8 @@
   .eyelids { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; --o: 1; --b: 0px; }
   .dg-story > .eyelids { position: absolute; z-index: 4; }
   .dg-story.eyes-on .vn-box { z-index: 5; }
-  .dg-story.eyes-on .vn-hero { z-index: 6; }   /* 對話框和主角留在眼皮上面；主角照平常一樣在對話框前面 */
+  .dg-story.eyes-on .vn-hero { z-index: 6; }   /* 對話框和主角留在眼皮上面；電腦版主角照平常一樣在對話框前面 */
+  @media (orientation: portrait), (max-width: 899px) { .dg-story.eyes-on .vn-hero { z-index: 4; } .dg-story > .eyelids { z-index: 3; } }   /* 手機：主角照平常一樣站在對話框後面 */
   .eyelids .eye-blur { position: absolute; inset: 0; backdrop-filter: blur(var(--b)); -webkit-backdrop-filter: blur(var(--b)); }
   .eyelids .eye-dim { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 50%, transparent 40%, #000c 100%); opacity: calc(1 - var(--o)); }
   .eyelids .lid { position: absolute; left: 0; width: 100%; height: 51%; background: #050308; }   /* 上下兩個長方形 */
@@ -598,7 +603,7 @@
       <section class="result-summary-card" tabindex="0">
         <h1>恭喜過關！</h1>
         <p class="result-comment" id="resComment"></p>
-        <div class="result-avatar-placeholder" aria-hidden="true"><img data-ph width="987" height="1593" style="aspect-ratio:987/1593" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt=""></div>
+        <div class="result-avatar-placeholder"><img id="resArt" width="1024" height="1024" alt=""></div>   <!-- 通關圖：依星等換 ui/result_tier1～5.png -->
         <div class="result-stars" id="resStars" role="img"></div>
         <div class="result-badge"><span id="resDialect"></span><b id="resTitle"></b></div>
         <div class="result-metrics">
@@ -1277,7 +1282,7 @@ $("lbAll").onclick = async () => { DSFX.decide(); leaderboard = await leaderboar
 const VN = {
   heroSleepy: "dream/vn/hero_sleepy.webp", heroClosed: "dream/vn/hero_closed.webp", heroOpen: "dream/vn/hero_open.webp",
   heroSurprised: "dream/vn/hero_surprised.webp", heroSurprisedPx: "dream/vn/hero_surprised_px.webp?v=3", heroLaugh: "dream/vn/hero_laugh.webp",
-  mysteryPx: "dream/vn/mate_px.webp", mateWave: "dream/vn/mate_wave.webp", mateThink: "dream/vn/mate_think.webp?v=3",
+  mysteryPx: "dream/vn/mate_px.webp", mateWave: "dream/vn/mate_wave.webp?v=4", mateThink: "dream/vn/mate_think.webp?v=6",
   bossShadow: "dream/boss.png",   // 殭屍王（用 CSS 塗成黑剪影）
 };
 // 前導故事（劇本「▼前導故事」）
@@ -1398,6 +1403,7 @@ function renderResult(played) {
   const total = st.score + (st.score2 || 0);
   const stars = starOf(me?.rank, lb?.participantCount, me ? me.score : total), tier = RESULT_TIERS[stars];
   $("resComment").textContent = tier.comment;
+  $("resArt").src = `ui/result_tier${stars}.png`; $("resArt").alt = `通關圖：${tier.title}`;
   $("resDialect").textContent = st.dialect; $("resTitle").textContent = tier.title;
   $("resStars").innerHTML = [1, 2, 3, 4, 5].map(n => `<span class="${n <= stars ? "on" : ""}">★</span>`).join("");
   $("resStars").setAttribute("aria-label", `${stars} 星`);
