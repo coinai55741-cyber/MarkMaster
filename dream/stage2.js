@@ -10,12 +10,18 @@
   const LV = () => st.level;
 
   // ---------- 抽詞：依字數由短到長，各一個 ----------
+  const wordKey = w => w.h.join("").normalize("NFC");
   function pickWords() {
-    const bank = FW_WORDS[st.dialect] || FW_WORDS["四縣腔"], used = new Set(), out = [];
+    const bank = FW_WORDS[st.dialect] || FW_WORDS["四縣腔"];
+    const ids = new Set(), words = new Set(), out = [];
     for (const n of PLAN) {
-      const pool = bank.filter(w => w.h.length === n && !used.has(w.id));
+      const pool = bank.filter(w => w.h.length === n && !ids.has(w.id) && !words.has(wordKey(w)));
       const w = pool[Math.floor(Math.random() * pool.length)];
-      if (w) { used.add(w.id); out.push(w); }
+      if (w) {
+        ids.add(w.id);
+        words.add(wordKey(w));
+        out.push(w);
+      }
     }
     return out;
   }
@@ -397,18 +403,22 @@
     sizePad();
     // 教學：用一個不計分的字練習一次（計時暫停）
     await story([{ who: "神秘同學（從符紙裡傳來的聲音）", text: "別慌！聆聽聲音，把聲調畫出來，就能把殭屍封起來！" }]);
-    const bank = FW_WORDS[st.dialect] || FW_WORDS["四縣腔"], used = new Set(S2.words.map(w => w.id));
-    const pw = bank.find(w => !used.has(w.id) && w.h.length === 2) || bank[0];
-    S2.practice = sylInfo(pw, 0);
-    $("s2PadTitle").innerHTML = `練習：<b>${esc(S2.practice.ch)}</b> <span>${esc(S2.practice.syl)}</span>`;
-    hint(S2.practice);
-    $("s2Sandhi").textContent = "";
-    $("s2Cells").innerHTML = `<div class="s2-tip">先在<span class="pc-only">右邊</span><span class="m-only">下面</span>的框框練習一次：<br>看音高線，<b>由左往右</b>畫出這個字的聲調。</div>`;
-    showTarget = S2.practice.target; drawPad();
-    fb("照綠色虛線畫畫看！", "mid");
-    S2.busy = false;                                   // 開放畫板（練習不計時）
-    await new Promise(r => { S2.onPracticeDone = r; });
-    await story([{ who: "神秘同學（從符紙裡傳來的聲音）", text: "對，就是這樣！方向畫對，就能蓋上「封」印。" }]);
+    const bank = FW_WORDS[st.dialect] || FW_WORDS["四縣腔"];
+    const ids = new Set(S2.words.map(w => w.id)), words = new Set(S2.words.map(wordKey));
+    const practicePool = bank.filter(w => !ids.has(w.id) && !words.has(wordKey(w)));
+    const pw = practicePool.find(w => w.h.length === 2) || practicePool[0];
+    if (pw) {
+      S2.practice = sylInfo(pw, 0);
+      $("s2PadTitle").innerHTML = `練習：<b>${esc(S2.practice.ch)}</b> <span>${esc(S2.practice.syl)}</span>`;
+      hint(S2.practice);
+      $("s2Sandhi").textContent = "";
+      $("s2Cells").innerHTML = `<div class="s2-tip">先在<span class="pc-only">右邊</span><span class="m-only">下面</span>的框框練習一次：<br>看音高線，<b>由左往右</b>畫出這個字的聲調。</div>`;
+      showTarget = S2.practice.target; drawPad();
+      fb("照綠色虛線畫畫看！", "mid");
+      S2.busy = false;                                   // 開放畫板（練習不計時）
+      await new Promise(r => { S2.onPracticeDone = r; });
+      await story([{ who: "神秘同學（從符紙裡傳來的聲音）", text: "對，就是這樣！方向畫對，就能蓋上「封」印。" }]);
+    }
     S2.active = true; $("s2Listen").hidden = false;
     nextWave();
   };

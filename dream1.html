@@ -146,8 +146,6 @@
   .lobby-fu .kidwrap canvas.kid-aura { position: absolute; pointer-events: none; }
   .lobby-fu img.kid { width: calc(var(--w) * var(--s)); height: auto; transform: none; filter: none;   /* 不要套到符紙的黃色光暈 */
     animation: none; image-rendering: auto; }
-  /* 題目回顧不放場景圖：右邊的內容佔滿整列 */
-  #resReview .sentence-review-layout { display: block !important; }
   /* 成績頁（600px 以上）：字級照穿搭小達人平板版；手機直式不覆寫，直接用 lobby.css 裡穿搭小達人的手機版樣式 */
   @media (min-width: 600px) {
     /* 成績頁字級：照穿搭小達人平板版（style.css「結算頁面與排行榜擴展樣式」），橫向畫面也用這組，不用 8px 的精簡版 */
@@ -172,32 +170,98 @@
     .result-ranking-note b { font-size: 1rem !important; }
     .result-ranking-note ol { font-size: .92rem !important; }
     .rank-foot { font-size: 1rem !important; }
-    /* 題目回顧：字級照穿搭小達人（桌機版 20／18px、平板標題 1.45rem），版面維持現在的格式 */
-    .sentence-review-card { padding: 1.8rem 1.5rem !important; border-radius: 32px !important; }
-    .sentence-review-card h2 { font-size: 1.45rem !important; padding: 8px 48px !important; }
-    .sentence-review-item { padding: 1.25rem !important; border-radius: 20px !important; }
-    .sentence-review-item header, .sentence-review-item header h3 { font-size: 1.15rem !important; }
-    .sentence-review-badges span, .sentence-review-badges em { font-size: 1rem !important; }
-    .sentence-hint b { font-size: 1.15rem !important; }
-    .sentence-hint p { font-size: 1.1rem !important; line-height: 1.6 !important; }
-    .sentence-context-mistakes small { font-size: .95rem !important; }
-    .sentence-context-mistakes p { font-size: 1.1rem !important; }
-  }
-  /* 題目回顧（手機直式）：精簡版只有 9–11px 太小，改成跟題目句差不多大 */
-  @media (max-width: 599px) {
-    .sentence-review-item header, .sentence-review-item header h3 { font-size: 1rem !important; }
-    .sentence-review-badges span, .sentence-review-badges em { font-size: .85rem !important; }
-    .sentence-hint b { font-size: 1rem !important; }
-    .sentence-hint p, .sentence-context-mistakes p { font-size: .98rem !important; line-height: 1.6 !important; }
-    .sentence-context-mistakes small { font-size: .85rem !important; }
   }
   /* 成績頁的星等 */
   .result-stars { display: flex; justify-content: center; gap: 2px; margin: .2rem 0 0; font-size: 1.4rem; line-height: 1; }
   .result-stars span { color: #e3dccd; }
   .result-stars span.on { color: #f7d134; }
-  .rv-say { display: inline-grid; place-items: center; width: 30px; height: 30px; margin: 0 8px 0 0; vertical-align: middle; flex: none; border: 2px solid #4c355c; border-radius: 50%;
-    background: #8f6ad0; color: #fff; cursor: pointer; padding: 0; font-size: 16px; box-shadow: 0 2px 0 #4c355c55; }
-  .rv-say.on { background: #f2c14e; color: #4c355c; } .rv-say:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+  /* ===== 題目回顧 ===== */
+  .rv-panel {
+    --rv-ink: #302737;
+    --rv-muted: #665c6d;
+    box-sizing: border-box;
+    width: min(760px, calc(100vw - 32px));
+    padding: 1.45rem;
+    background: #fff8ec;
+    border: 3px solid #4c355c;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 2px #e5c08a, 0 5px 0 #33253f;
+    color: var(--rv-ink);
+  }
+  .rv-panel > h2 { margin: 0 0 1rem; color: #3b2d4f; font-size: 1.55rem; scroll-margin-top: 3.5rem; }
+  .rv-list, .rv-items { display: grid; gap: .75rem; }
+  .rv-list { gap: 1.25rem; }
+  .rv-group { min-width: 0; }
+  .rv-stage, .rv-head, .rv-grade { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .7rem; }
+  .rv-stage {
+    justify-content: space-between;
+    margin-bottom: .7rem;
+    padding: .55rem .7rem;
+    background: #443354;
+    border-inline-start: 4px solid #d9aa4d;
+    color: #fff7e6;
+  }
+  .rv-stage h3, .rv-head h4 { margin: 0; font-size: 1rem; line-height: 1.4; }
+  .rv-stage span, .rv-grade { font-size: .85rem; font-weight: 700; }
+  .rv-item {
+    --rv-status: #225e4d;
+    --rv-state-bg: #e7f2e9;
+    min-width: 0;
+    background: #fffdf7;
+    border: 1px solid #e2d5bf;
+    border-inline-start: 4px solid var(--rv-status);
+    border-radius: 3px;
+  }
+  .rv-item.failed { --rv-status: #8b3e38; --rv-state-bg: #f8e8e2; }
+  .rv-head { justify-content: space-between; padding: .62rem .8rem; border-bottom: 1px solid #e9dfcf; }
+  .rv-head h4 { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .5rem; min-width: 0; }
+  .rv-number { color: var(--rv-muted); font-size: .85rem; font-weight: 700; }
+  .rv-grade { color: #463450; font-variant-numeric: tabular-nums; }
+  .rv-status { display: inline-flex; align-items: center; gap: .2rem; padding: .18rem .4rem; color: var(--rv-status); background: var(--rv-state-bg); }
+  .rv-content { display: grid; gap: .7rem; padding: .75rem .8rem .85rem; }
+  .rv-line { display: flex; align-items: flex-start; gap: .5rem; min-width: 0; }
+  .rv-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .rv-hakka, .rv-translation { margin: 0; line-height: 1.55; }
+  .rv-hakka { font: 700 1rem/1.55 var(--hakka-font); }
+  .rv-question .rv-hakka { font-size: 1.08rem; }
+  .rv-translation { margin-top: .12rem; color: var(--rv-muted); font-size: .9rem; }
+  .rv-answers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .5rem; }
+  .rv-answer { min-width: 0; padding: .5rem; background: #eff6ee; border-inline-start: 3px solid #81ab92; }
+  .rv-answer.chosen { background: #fbf0e9; border-color: #c58472; }
+  .rv-label { display: block; margin-bottom: .3rem; color: #245c4c; font-size: .88rem; }
+  .rv-answer.chosen .rv-label { color: #853f37; }
+  .rv-tone-title { margin: 0 0 .3rem; color: #483755; font-size: .9rem; }
+  .rv-tones { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
+  .rv-tones li {
+    display: grid;
+    grid-template-columns: minmax(6rem, auto) minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: .3rem .6rem;
+    padding: .3rem .55rem;
+    background: #f5f0f8;
+    font-size: .9rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  .rv-syllable { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .45rem; }
+  .rv-syllable strong { font: 800 1.05rem/1.45 var(--hakka-font); }
+  .rv-syllable span { color: var(--rv-muted); }
+  .rv-precision { white-space: nowrap; color: #543964; font-variant-numeric: tabular-nums; }
+  .rv-empty { margin: 0; color: var(--rv-muted); }
+  .rv-say {
+    display: inline-grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0;
+    border: 1px solid #604472; border-radius: 3px; background: #684881; color: #fff; cursor: pointer; font-size: 18px;
+  }
+  .rv-say:hover { background: #513662; }
+  .rv-say.on { background: #f2c14e; color: #4c355c; }
+  .rv-say:focus-visible { outline: 2px solid #214e9a; outline-offset: 2px; }
+  @media (max-width: 599px) {
+    .rv-panel { width: 100%; padding: .9rem .65rem; }
+    .rv-panel > h2 { font-size: 1.3rem; }
+    .rv-head, .rv-content { padding-inline: .55rem; }
+    .rv-tones li { grid-template-columns: minmax(0, 1fr) auto; }
+    .rv-tone-value { grid-column: 1 / -1; grid-row: 2; }
+  }
   .m-only { display: none; }   /* 手機版才顯示的字（例如「下面」），在手機的 @media 裡打開 */
   .result-ranking-note { width: 100% !important; max-width: none !important; align-self: stretch !important; box-sizing: border-box !important; }   /* 排行榜注意事項：左右滿版 */
   /* 成績頁通關圖（正方形）：原本留的位置放大一倍（電腦 170→340、手機 130→260） */
@@ -624,9 +688,9 @@
         <p class="rank-foot">目前共 <b id="resPeople">0</b> 人參加，共玩 <b id="resPlays">0</b> 次</p>
         <aside class="result-ranking-note"><b>注意事項</b><ol><li>同分且作答時間相同時，依活動參加先後進行排序。</li><li>本遊戲獎項僅頒發第 1–6 名；第 7–10 名請再接再厲！</li></ol></aside>
       </section>
-      <section class="sentence-review-card" aria-labelledby="sentence-review-title">
-        <h2 id="sentence-review-title" tabindex="0" role="heading" aria-level="2">題目回顧</h2>
-        <div class="sentence-review-list" id="resReview"></div>
+      <section class="rv-panel" aria-labelledby="sentence-review-title">
+        <h2 id="sentence-review-title">題目回顧</h2>
+        <div class="rv-list" id="resReview"></div>
       </section>
     </article>
   </section>
@@ -728,7 +792,20 @@ const timer = {
 };
 function buildRound() {
   const bank = QUIZ[st.dialect];
-  return pick(bank, ROUND).map(item => {
+  const selected = [], seen = new Set();
+  for (const item of shuffle(bank)) {
+    const prompt = item.q.h.normalize("NFC").replace(/[\s\p{P}]+/gu, "");
+    const audio = item.q.s?.trim();
+    const keys = [];
+    if (item.id != null) keys.push("id:" + item.id);
+    if (prompt) keys.push("prompt:" + prompt);
+    if (audio) keys.push("audio:" + audio);
+    if (keys.some(key => seen.has(key))) continue;
+    keys.forEach(key => seen.add(key));
+    selected.push(item);
+    if (selected.length === ROUND) break;
+  }
+  return selected.map(item => {
     const far = [...new Map(bank.filter(x => x.decoy && x.topic !== item.topic && x.a.h !== item.a.h).map(x => [x.a.h, x.a])).values()];   // 同一句答句（例如 108、110 共用）只算一次
     const wrong = st.level === "hard" ? item.near.slice() : st.level === "mid" ? [pick(item.near, 1)[0], pick(far, 1)[0]] : pick(far, 2);
     return { item, opts: shuffle([{ ...item.a, right: true }, ...wrong.map(w => ({ ...w, right: false }))]) };
@@ -1298,7 +1375,12 @@ const PROLOGUE = [
     fx: () => setTimeout(() => flickerTo($("vnHero"), VN.heroSurprisedPx), 500) },
 ];
 function start() {
-  Object.assign(st, { qs: buildRound(), i: 0, score: 0, fu: 0, log: [], scene: null, elapsed: 0 });
+  const qs = buildRound();
+  if (qs.length < ROUND) {
+    window.alert("這個腔調的題庫目前不足 " + ROUND + " 道不同的題目。");
+    return;
+  }
+  Object.assign(st, { qs, i: 0, score: 0, fu: 0, log: [], scene: null, elapsed: 0 });
   timer.reset(); timer.resume();
   $("game").querySelector(".dg-ui").hidden = false;
   $("dgFuN").textContent = "0";
@@ -1414,26 +1496,55 @@ function renderResult(played) {
   if (me && me.rank > 10) html += `<li class="result-rank-ellipsis" aria-hidden="true"><span>·</span><span>·</span><span>·</span></li>` + row(me, "mine out-of-top-ten");
   $("resRankList").innerHTML = html;
   $("resPeople").textContent = lb.participantCount; $("resPlays").textContent = lb.playCount;
+  renderReview(st.log, S2.log || []);
+}
+
+function renderReview(listening, tones) {
   const say = (src, label) => src ? `<button class="rv-say" type="button" data-s="${esc(src)}" aria-label="聽${label}">${IC("volume-3")}</button>` : "";
-  $("resReview").innerHTML = st.log.map((l, i) => `
-    <article class="sentence-review-item ${l.right ? "passed" : "failed"}" tabindex="0" role="group">
-      <header><h3>第${i + 1}題</h3><div class="sentence-review-badges"><span>得分：${l.right ? 10 : 0} 分</span><em>${l.right ? IC("check") + " 已通關" : IC("close") + " 未通關"}</em></div></header>
-      <div class="sentence-review-layout">
-        <div class="sentence-review-detail">
-          <section class="sentence-question-block" aria-label="題目"><h4>${esc(l.item.topic)}</h4><p class="sentence-question-badge" style="font-family:var(--hakka-font)">${say(l.item.q.s, "題目")}${esc(l.item.q.h)}</p><p class="sentence-question-description">${esc(l.item.q.m)}</p></section>
-          <section class="sentence-hint ${l.right ? "success" : ""}" aria-label="答題結果"><b>${l.right ? "答對了！" : "正確的回答是："}</b><p style="font-family:var(--hakka-font)">${say(l.item.a.s, "正確的回答")}${esc(l.item.a.h)}（${esc(l.item.a.m)}）</p>${l.right ? "" : `<div class="sentence-context-mistakes"><small>你選的：</small><p style="font-family:var(--hakka-font)">${say(l.chosen.s, "你選的回答")}${esc(l.chosen.h)}</p></div>`}</section>
+  const line = ({ h, m, s }, label, cls = "") => `<div class="rv-line ${cls}">${say(s, label)}
+    <div class="rv-copy"><p class="rv-hakka">${esc(h)}</p>${m ? `<p class="rv-translation">${esc(m)}</p>` : ""}</div>
+  </div>`;
+  const grade = (passed, score, status) => `<div class="rv-grade"><span>${score}</span><span class="rv-status">${IC(passed ? "check" : "close")}${status}</span></div>`;
+  const group = (title, summary, items) => `<section class="rv-group"><header class="rv-stage"><h3>${title}</h3><span>${summary}</span></header><div class="rv-items">${items}</div></section>`;
+  const questions = listening.map(({ item, chosen, right }, i) => `
+    <article class="rv-item${right ? "" : " failed"}">
+      <header class="rv-head">
+        <h4><span class="rv-number">第 ${i + 1} 題</span> ${esc(item.topic)}</h4>
+        ${grade(right, `${right ? 10 : 0} 分`, right ? "答對" : "答錯")}
+      </header>
+      <div class="rv-content">
+        ${line(item.q, `第 ${i + 1} 題題目`, "rv-question")}
+        <div class="rv-answers">
+          <div class="rv-answer"><b class="rv-label">正確答案</b>${line(item.a, `第 ${i + 1} 題正確答案`)}</div>
+          ${right ? "" : `<div class="rv-answer chosen"><b class="rv-label">你選的答案</b>${line(chosen, `第 ${i + 1} 題所選答案`)}</div>`}
         </div>
       </div>
-    </article>`).join("") + (S2.log || []).map((r, i) => `
-    <article class="sentence-review-item ${r.failed ? "failed" : "passed"}" tabindex="0" role="group">
-      <header><h3>第二關・第${i + 1}波</h3><div class="sentence-review-badges"><span>${r.failed ? "沒在時間內封印：0 分" : `平均：${(r.seals.reduce((a, b) => a + b, 0) / r.seals.length * 100).toFixed(2)}%`}</span><em>${r.failed ? IC("close") + " 未封印" : IC("check") + " 已封印"}</em></div></header>
-      <div class="sentence-review-layout">
-        <div class="sentence-review-detail">
-          <section class="sentence-question-block" aria-label="詞"><h4>${say(r.w.s, "這個詞")}${esc(r.w.h.join(""))}</h4><p class="sentence-question-badge" style="font-family:var(--hakka-font)">${esc(r.w.p.join(" "))}</p><p class="sentence-question-description">${esc(r.w.m || "")}</p></section>
-          <section class="sentence-hint ${r.failed ? "" : "success"}" aria-label="每個字的精準度"><b>每個字的聲調（本調）</b><p>${r.w.h.map((ch, k) => { const sp = TONE.spoken(st.dialect, r.w, k); return `${esc(ch)} ${esc(r.w.p[k])}：本調 ${sp.base}${sp.changed ? `（整詞唸 ${sp.val}）` : ""}　${(r.seals[k] * 100).toFixed(1)}%`; }).join("<br>")}</p></section>
-        </div>
+    </article>`).join("");
+  const words = tones.map(({ w, seals, failed }, i) => {
+    const mean = seals.length ? (seals.reduce((a, b) => a + b, 0) / seals.length * 100).toFixed(1) : null;
+    const syllables = w.h.map((ch, k) => {
+      const sp = TONE.spoken(st.dialect, w, k);
+      const precision = Number.isFinite(seals[k]) ? `${(seals[k] * 100).toFixed(1)}%` : "未作答";
+      return `<li>
+        <span class="rv-syllable"><strong>${esc(ch)}</strong> <span>${esc(w.p[k])}</span></span>
+        <span class="rv-tone-value">本調 ${esc(sp.base)}${sp.changed ? `（整詞唸 ${esc(sp.val)}）` : ""}</span>
+        <b class="rv-precision">${precision}</b>
+      </li>`;
+    }).join("");
+    return `<article class="rv-item${failed ? " failed" : ""}">
+      <header class="rv-head">
+        <h4><span class="rv-number">第 ${i + 1} 波</span> ${esc(w.h.join(""))}</h4>
+        ${grade(!failed, failed ? "逾時，0 分" : mean === null ? "無精準度紀錄" : `平均 ${mean}%`, failed ? "未封印" : "已封印")}
+      </header>
+      <div class="rv-content">
+        ${line({ h: w.p.join(" "), m: w.m, s: w.s }, `第 ${i + 1} 波詞語`)}
+        <div><h5 class="rv-tone-title">每字聲調與精準度</h5><ul class="rv-tones">${syllables}</ul></div>
       </div>
-    </article>`).join("") || `<p class="rank-foot">還沒有作答紀錄。</p>`;
+    </article>`;
+  }).join("");
+  const first = questions ? group("第一關・聽聲應答", `答對 ${listening.filter(q => q.right).length} / ${listening.length} 題`, questions) : "";
+  const second = words ? group("第二關・聲調封印", `封印 ${tones.filter(r => !r.failed).length} / ${tones.length} 波`, words) : "";
+  $("resReview").innerHTML = first + second || '<p class="rv-empty">還沒有作答紀錄。</p>';
 }
 // 成績頁：題目、答案、詞旁邊的喇叭按鈕
 $("resReview").addEventListener("click", e => {
@@ -1535,6 +1646,6 @@ function prepAvatar(a) {
   $("startBtn").disabled = false; $("startBtn").textContent = "進入夢境";
 })();
 </script>
-<script src="dream/stage2.js?v=20261127a"></script>
+<script src="dream/stage2.js?v=20261127b"></script>
 </body>
 </html>
