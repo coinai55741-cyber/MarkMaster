@@ -320,6 +320,7 @@
   async function bossEntrance() {
     const stage = $("s2Stage");
     zState.dist = .5; zState.rise = 0; ent.rift = 0; ent.motes = [];   // 一出場就比小殭屍大
+    BGM.stop(.8);                                      // 熄燈：音樂先停，殭屍王報完名再放加強版
     await tween(700, k => { ent.dark = .6 * k; });
     await story([{ who: "？？？", text: "哼！小的們都不中用……" }]);
     S2.active = true;
@@ -337,6 +338,7 @@
     dust();
     tween(600, k => { ent.rift = 1 - k; });
     await bossTitle();
+    BGM.play("boss");
     await tween(500, k => { ent.dark = .6 - .35 * k; });
     removeEventListener("pointerdown", skip); removeEventListener("keydown", skip); ent.skip = false;
     await story([{ who: "貪睡殭屍王", text: "本王親自上場啦！" }]);

@@ -7,7 +7,7 @@
 <!-- 檢查用：不玩遊戲，直接列出全部題目（隨機順序），用和遊戲相同的規則抽誘答，確認題目、答案、誘答合不合情境。
      資料：data.js（window.QUIZ）；音檔：audio/<腔>/<序號>.mp3
      抽誘答規則同 dream1.html 的 buildRound()。
-     標記：存在這台瀏覽器的 localStorage（quizCheckMarks.v1）；按「複製標記」把文字貼給 Claude，再改進 make_pairs.py。
+     標記：存在這台瀏覽器的 localStorage（quizCheckMarks.v2）；按「複製標記」把文字貼給 Claude，再改進 make_pairs.py。
      題號 id 與句子序號 6 腔共用，所以在任一腔標的，6 腔都算。 -->
 <style>
   :root { --bg:#f6f3ee; --card:#fff; --ink:#2a2530; --sub:#7a7280; --line:#e4dfd8; --ok:#1f9d55; --okbg:#e8f6ee; --near:#c27a00; --far:#5a6acf; --acc:#6b3fa0; --bad:#d64545; --badbg:#fdecec; --warn:#e08a00; --warnbg:#fff4e0; }
@@ -115,7 +115,7 @@
   <textarea id="dlgText" readonly></textarea>
   <div class="acts"><button id="dlgCopy" class="pri">再複製一次</button><button id="dlgClose">關閉</button></div>
 </dialog>
-<script src="data.js"></script>
+<script src="data.js?v=20261126b"></script>
 <script>
 const $ = id => document.getElementById(id);
 const AUDIO = "";
@@ -129,7 +129,7 @@ const qs = new URLSearchParams(location.search);
 if (qs.get("level")) $("lv").value = qs.get("level");
 
 // ---- 標記：{ 題號: { o: { 句子序號: "wrong"|"also" }, none, bad, note, dia, t } } ----
-const KEY = "quizCheckMarks.v1";
+const KEY = "quizCheckMarks.v2";   // 題庫改版、題號重排時換新的 key，舊標記才不會對到別題（v1：2026-11-26 前的 66 題版）
 let marks = {};
 try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { marks = {}; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch {} };
@@ -149,7 +149,7 @@ function updateCount() { $("markCount").textContent = `已標 ${Object.keys(mark
 function build() {
   const bank = QUIZ[$("dia").value], level = $("lv").value;
   return shuffle(bank).map(item => {
-    const far = bank.filter(x => x.decoy && x.topic !== item.topic && x.a.h !== item.a.h).map(x => ({ ...x.a, kind: "far", from: x.topic }));
+    const far = [...new Map(bank.filter(x => x.decoy && x.topic !== item.topic && x.a.h !== item.a.h).map(x => [x.a.h, { ...x.a, kind: "far", from: x.topic }])).values()];   // 同一句答句只算一次（同 dream1.html）
     const near = item.near.map(x => ({ ...x, kind: "near" }));
     const wrong = level === "hard" ? near : level === "mid" ? [pick(near, 1)[0], pick(far, 1)[0]] : pick(far, 2);
     return { item, opts: shuffle([{ ...item.a, kind: "ok" }, ...wrong]) };

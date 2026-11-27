@@ -26,7 +26,7 @@ python -m http.server 8766
 所有對話都是 GALGAME 樣式（點一下下一句，可跳過）；殭屍王標題字卡會在中間停 1 秒，連點可直接跳過。
 
 ## 第一關題目檢查頁
-`quiz_check.html`（線上：<https://coinai55741-cyber.github.io/MarkMaster/quiz_check.html>）：不用玩遊戲，直接列出該腔全部 66 題（隨機順序），誘答用和遊戲一樣的規則抽，可聽前情句＋題目（有進度條）、每個選項單獨聽，標出正解／近誘答／遠誘答。用來檢查題目、答案、誘答合不合情境。
+`quiz_check.html`（線上：<https://coinai55741-cyber.github.io/MarkMaster/quiz_check.html>）：不用玩遊戲，直接列出該腔全部 64 題（隨機順序），誘答用和遊戲一樣的規則抽，可聽前情句＋題目（有進度條）、每個選項單獨聽，標出正解／近誘答／遠誘答。用來檢查題目、答案、誘答合不合情境；每題可以標「這不是答案／這也可以／都不是答案／題目有問題」加備註，按「複製標記給 Claude」匯出（修正紀錄見規格書第 9 節）。
 網址加 `?level=mid` 或 `?level=hard` 切難度（同遊戲）。
 
 劇本與成績星等的文字以 Google 文件「午休驅魔記 劇本」為準。
@@ -38,6 +38,7 @@ python -m http.server 8766
 | `dream1.html` | 遊戲本體（說明頁、前導故事、第一關、結算、排行榜都在這裡） |
 | `dream/stage2.js` | 第二關：封印殭屍王（畫聲調、殭屍、殭屍王出場） |
 | `dream/sfx.js` | 合成音效（Web Audio，沒有音效檔） |
+| `dream/bgm.js` | 背景音樂（Web Audio 即時合成的原創曲，沒有音檔、沒有授權問題）：`lobby` 故事／說明頁／醒來／成績頁、`stage1` 第一關、`stage2` 第二關、`boss` 殭屍王出場後；客語語音播放時自動壓小 |
 | `dream/lobby.css` | 說明頁、排行榜、結算頁樣式（沿用「穿搭小達人」編譯後的樣式） |
 | `dream/vector-avatar.js`、`dream/classmate.json` | 同學的向量角色引擎與資料，遊戲中即時轉成像素圖（重建方法見下方「角色引擎」） |
 | `quiz_check.html` | 第一關題目檢查頁（不用玩遊戲） |
@@ -70,6 +71,7 @@ python -m http.server 8766
 ## 給接手工程師
 - **排行榜目前是假資料**：`dream1.html` 裡的 `leaderboardService`（`getLeaderboard`、`submitGameResult`），正式上線只要改這裡接後端，接法同「穿搭小達人」
 - **成績星等**：`starOf()` 依排行榜名次百分比給星等（5 星＝排名第 1 且滿分；4 星前 20%；3 星前 21–50%；2 星前 51–80%；1 星後 20%），稱號與評語在 `RESULT_TIERS`
+- **背景音樂**：`dream1.html` 的 `SCREEN_BGM` 決定每個畫面放哪首（`show()` 時切換）；曲子寫在 `dream/bgm.js` 的 `TRACKS`（每小節 8 格的音符字串），音量 `VOL`、語音時壓到 `DUCK`。聲音按鈕會一起關掉語音、音效、音樂
 - **第二關時間**：`dream/stage2.js` 的 `WALK_SEC`（殭屍走到面前的秒數）
 - 手機直式、橫式、桌機都有版面；`prefers-reduced-motion` 時會關掉震動、旋轉等動畫
 

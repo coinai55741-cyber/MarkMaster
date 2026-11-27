@@ -622,9 +622,10 @@
 </main>
 <div id="dgSrc"></div><div id="dgSrc2"></div>
 
-<script src="data.js"></script>
+<script src="data.js?v=20261126b"></script>
 <script src="dream/vector-avatar.js?v=5"></script>
 <script src="dream/sfx.js?v=20261125c"></script>
+<script src="dream/bgm.js?v=1"></script>
 <script src="fireworks_data.js"></script>
 <script src="tone.js"></script>
 <script>
@@ -705,7 +706,7 @@ const timer = {
 function buildRound() {
   const bank = QUIZ[st.dialect];
   return pick(bank, ROUND).map(item => {
-    const far = bank.filter(x => x.decoy && x.topic !== item.topic && x.a.h !== item.a.h).map(x => x.a);
+    const far = [...new Map(bank.filter(x => x.decoy && x.topic !== item.topic && x.a.h !== item.a.h).map(x => [x.a.h, x.a])).values()];   // 同一句答句（例如 108、110 共用）只算一次
     const wrong = st.level === "hard" ? item.near.slice() : st.level === "mid" ? [pick(item.near, 1)[0], pick(far, 1)[0]] : pick(far, 2);
     return { item, opts: shuffle([{ ...item.a, right: true }, ...wrong.map(w => ({ ...w, right: false }))]) };
   });
@@ -1012,7 +1013,9 @@ $("dgBar").addEventListener("keydown", e => {
 });
 
 // ---- 畫面切換 ----
-function show(id) { for (const s of ["intro", "lobby", "game", "stage2", "result"]) $(s).hidden = s !== id; window.scrollTo(0, 0); }
+// 換畫面時順便換背景音樂（dream/bgm.js）：故事、說明頁、醒來、成績頁＝lobby；第一關＝stage1；第二關＝stage2（殭屍王出場後換 boss）
+const SCREEN_BGM = { intro: "lobby", lobby: "lobby", game: "stage1", stage2: "stage2", result: "lobby" };
+function show(id) { for (const s of ["intro", "lobby", "game", "stage2", "result"]) $(s).hidden = s !== id; window.scrollTo(0, 0); BGM.play(SCREEN_BGM[id]); }
 // 劇情對話（GALGAME 樣式）：beats = [{ who, text, fx, hero, stand }]
 //   點一下（或按 Enter／空白鍵）換下一句；fx 在顯示這句時執行
 //   hero：主角說話時對話框左邊的小半身像（沒寫＝這句不顯示）
@@ -1091,10 +1094,13 @@ function chipRow(el, items, cur, onPick) {
 chipRow($("dialects"), DIALECTS.map(d => [d, d]), st.dialect, d => st.dialect = d);
 // 難度：說明頁不放選單（版面同穿搭小達人），先用網址參數 ?level=easy|mid|hard
 const qLevel = new URLSearchParams(location.search).get("level"); if (LEVELS[qLevel]) st.level = qLevel;
-$("soundBtn").onclick = $("introSound").onclick = () => {
-  st.sound = !st.sound; audio.muted = !st.sound; DSFX.setMuted(!st.sound);
+// 聲音開關：語音、音效、背景音樂一起開關；上次關掉的話（DSFX 記在 localStorage）這次也是關的
+function setSound(on) {
+  st.sound = on; audio.muted = !on; DSFX.setMuted(!on); BGM.setMuted(!on);
   for (const b of [$("soundBtn"), $("introSound")]) { b.setAttribute("aria-pressed", st.sound); b.setAttribute("aria-label", `音效按鈕，目前${st.sound ? "開啟" : "關閉"}，點擊${st.sound ? "關閉" : "開啟"}音效`); b.querySelector("img").src = st.sound ? "ui/sound-icon.svg" : "ui/sound-off-icon.svg"; }
-};
+}
+$("soundBtn").onclick = $("introSound").onclick = () => setSound(!st.sound);
+setSound(!DSFX.muted);
 $("rankToggle").onclick = () => { $("rankModal").hidden = false; };
 $("rankClose").onclick = $("rankClose2").onclick = () => { $("rankModal").hidden = true; };
 $("rankModal").onclick = e => { if (e.target === $("rankModal")) $("rankModal").hidden = true; };
@@ -1368,7 +1374,7 @@ async function finish() {
     { who: "神秘同學", stand: VN.mysteryPx, live: true, center: true, glow: true, text: "糟糕！被殭屍發現了！！！拿好我交給你的符紙，準備開始嘍！",
       fx: () => { DSFX.paper(); av2.setExpression("troubled"); av2.play("kimodo_nod_surprise"); } },   // 說話的是大的神秘同學（跟場景裡冒紫氣的不是同一個）
     { who: "", text: "（四周的教室開始一塊一塊地裂開……）", fx: () => { crack = crackFx(); } },
-    { who: "？？？", stand: VN.bossShadow, center: true, shadow: true, text: "是誰，擾我清夢！", fx: () => { DSFX.vortex(); const v = document.createElement("div"); v.className = "dg-vortex"; document.body.appendChild(v); setTimeout(() => v.remove(), 1500); } },
+    { who: "？？？", stand: VN.bossShadow, center: true, shadow: true, text: "是誰，擾我清夢！", fx: () => { BGM.stop(1.5); DSFX.vortex(); const v = document.createElement("div"); v.className = "dg-vortex"; document.body.appendChild(v); setTimeout(() => v.remove(), 1500); } },
   ]);
   await swirlAway(crack);
   if (crack) crack.remove();
@@ -1392,7 +1398,7 @@ async function swirlAway(crack) {
 }
 // 第二關結束：殭屍王被封印 → 夢境補起來 → 醒來（同學叫你起床）→ 總成績與排行榜
 async function ending() {
-  timer.pause();
+  timer.pause(); BGM.stop(2);   // 殭屍王被封印：音樂收掉，醒來回到教室再放 lobby
   await story([
     { who: "貪睡殭屍王", text: "哎喲……好啦我錯了，我去別處找地方睡……", fx: () => DSFX.cancel() },
     { who: "", text: "（符紙發出金光，把裂開的夢一片一片補了回去。）", fx: () => { DSFX.fanfare(); DSFX.flash("#fff2b0", 700); } },
